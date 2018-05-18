@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Google LLC
+ Copyright 2018 the Material Automation authors. All Rights Reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -20,12 +20,14 @@ import PerfectLib
 import PerfectCURL
 import PerfectHTTP
 import PerfectLogger
+import PerfectThread
 
 public class GithubAuth {
   static let productionPath = "/root/MaterialAutomation/"
   static let localPath = Dir.workingDir.path
   static var JWTToken = ""
   static var accessToken = ""
+  static let credentialsLock = Threading.Lock()
 
   class func signAndEncodeJWT() throws -> String {
     let fileDirectory = productionPath
@@ -114,6 +116,7 @@ public class GithubAuth {
   }
 
   class func refreshGithubCredentials() -> Bool {
+    GithubAuth.credentialsLock.lock()
     do {
       _ = try GithubAuth.signAndEncodeJWT()
       if let accessTokenURL = GithubAuth.getFirstAppInstallationAccessTokenURL() {
@@ -123,6 +126,8 @@ public class GithubAuth {
     } catch {
       LogFile.error("Cannot Authenticate with Github: \(error)")
     }
+    GithubAuth.credentialsLock.unlock()
+
     return false
   }
 

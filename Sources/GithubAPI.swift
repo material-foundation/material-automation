@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Google LLC
+ Copyright 2018 the Material Automation authors. All Rights Reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -19,15 +19,33 @@ import PerfectCURL
 import PerfectHTTP
 import PerfectLogger
 import PerfectCrypto
+import PerfectThread
+
+class GithubCURLRequest: CURLRequest {
+  static let curlAccessLock = Threading.Lock()
+
+  override init(options: [CURLRequest.Option]) {
+    super.init(options: options)
+
+    GithubCURLRequest.curlAccessLock.lock()
+    if time(nil) - GithubAPI.lastGithubAccess < 1 {
+      Threading.sleep(seconds: 1)
+    }
+    GithubAPI.lastGithubAccess = time(nil)
+    GithubCURLRequest.curlAccessLock.unlock()
+  }
+
+}
 
 public class GithubAPI {
   static let githubBaseURL = "https://api.github.com"
   static let retryCount = 0
+  static var lastGithubAccess = time(nil)
 
   class func addLabelsToIssue(url: String, labels: [String]) {
     let labelsURL = url + "/labels"
     do {
-      let request = CURLRequest(labelsURL, .postString(labels.description))
+      let request = GithubCURLRequest(labelsURL, .postString(labels.description))
       addAPIHeaders(to: request)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
@@ -41,9 +59,14 @@ public class GithubAPI {
 
   class func setLabelsForAllIssues() {
     do {
-      let issuesURL = githubBaseURL + "/repos/yarneo/material-components-ios/issues"
+      guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
+        LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
+        return
+      }
+      let relativePathForRepo = "/repos/" + repoPath
+      let issuesURL = githubBaseURL + relativePathForRepo + "/issues"
       let params = "?state=all"
-      let request = CURLRequest(issuesURL + params)
+      let request = GithubCURLRequest(issuesURL + params)
       addAPIHeaders(to: request)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
@@ -84,7 +107,7 @@ extension GithubAPI {
     headers["Authorization"] = "token \(GithubAuth.accessToken)"
     LogFile.debug("the access token is: \(GithubAuth.accessToken)")
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = "Material CI App"
+    headers["User-Agent"] = "Material Automation"
     return headers
   }
 

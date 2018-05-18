@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Google LLC
+ Copyright 2018 the Material Automation authors. All Rights Reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 
 import PackageDescription
 let package = Package(
-	name: "MaterialAutomation",
-	targets: [
-		Target(name: "MaterialAutomation", dependencies: [])
-	],
-	dependencies: [
-    	.Package(url: "https://github.com/PerfectlySoft/Perfect-Crypto.git", majorVersion: 3),
-      .Package(url: "https://github.com/PerfectlySoft/Perfect-HTTPServer.git", majorVersion: 3),
-    	.Package(url: "https://github.com/PerfectlySoft/Perfect-CURL.git", majorVersion: 3),
-      .Package(url: "https://github.com/PerfectlySoft/Perfect-Logger.git", majorVersion: 3),
-	]
+  name: "MaterialAutomation",
+  targets: [
+    Target(name: "MaterialAutomation", dependencies: [])
+  ],
+  dependencies: [
+    .Package(url: "https://github.com/PerfectlySoft/Perfect-Crypto.git", majorVersion: 3),
+    .Package(url: "https://github.com/PerfectlySoft/Perfect-HTTPServer.git", majorVersion: 3),
+    .Package(url: "https://github.com/PerfectlySoft/Perfect-CURL.git", majorVersion: 3),
+    .Package(url: "https://github.com/PerfectlySoft/Perfect-Logger.git", majorVersion: 3),
+    ]
 )
