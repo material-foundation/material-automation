@@ -10,11 +10,6 @@ libssl-dev \
 uuid-dev
 
 RUN openssl version -a
-# RUN sudo apt-get --assume-yes install software-properties-common
-# RUN sudo add-apt-repository ppa:0k53d-karl-f830m/openssl
-# RUN sudo apt-get update
-# RUN sudo apt-get --assume-yes install openssl
-# RUN openssl version -a
 
 # Expose default port for App Engine
 EXPOSE 8080
