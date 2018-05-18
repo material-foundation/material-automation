@@ -72,3 +72,5 @@ Package.resolved
 # Google App Engine
 app.yaml
 *.pem
+
+.DS_Store
