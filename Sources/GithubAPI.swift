@@ -43,6 +43,7 @@ public class GithubAPI {
   static var lastGithubAccess = time(nil)
 
   class func addLabelsToIssue(url: String, labels: [String]) {
+    LogFile.debug(labels.description)
     let labelsURL = url + "/labels"
     do {
       let request = GithubCURLRequest(labelsURL, .postString(labels.description))

@@ -94,6 +94,7 @@ public class GithubAuth {
   }
 
   class func refreshCredentialsIfUnauthorized(response: CURLResponse) -> Bool {
+    LogFile.debug("trying to refresh Github credentials")
     for n in 0..<4 {
       if response.responseCode == 401 || response.responseCode == 403 {
         if refreshGithubCredentials() {
@@ -114,16 +115,20 @@ public class GithubAuth {
 
   class func refreshGithubCredentials() -> Bool {
     GithubAuth.credentialsLock.lock()
+    defer {
+      GithubAuth.credentialsLock.unlock()
+    }
     do {
       _ = try GithubAuth.signAndEncodeJWT()
+      LogFile.debug("the JWT token is good: \(GithubAuth.JWTToken != "")")
       if let accessTokenURL = GithubAuth.getFirstAppInstallationAccessTokenURL() {
         let accessToken = GithubAuth.createAccessToken(url: accessTokenURL)
+        LogFile.debug("the access token is good: \(accessToken != nil && accessToken != "")")
         return accessToken != nil && accessToken != ""
       }
     } catch {
       LogFile.error("Cannot Authenticate with Github: \(error)")
     }
-    GithubAuth.credentialsLock.unlock()
 
     return false
   }
