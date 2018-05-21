@@ -58,6 +58,36 @@ public class GithubAPI {
     }
   }
 
+  class func createComment(url: String, comment: String) {
+    let commentsURL = url + "/comments"
+    let bodyDict = ["body": comment]
+    do {
+      let request = GithubCURLRequest(commentsURL, .postString(try bodyDict.jsonEncodedString()))
+      addAPIHeaders(to: request)
+      let response = try request.perform()
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+        createComment(url: url, comment: comment)
+      }
+      LogFile.info("request result for createComment: \(response.bodyString)")
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
+  }
+
+  class func editIssue(url: String, issueEdit: [String: Any]) {
+    do {
+      let request = GithubCURLRequest(url, .httpMethod(.patch), .postString(try issueEdit.jsonEncodedString()))
+      addAPIHeaders(to: request)
+      let response = try request.perform()
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+        editIssue(url: url, issueEdit: issueEdit)
+      }
+      LogFile.info("request result for editIssue: \(response.bodyString)")
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
+  }
+
   class func setLabelsForAllIssues() {
     do {
       guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
