@@ -28,29 +28,26 @@ public class GithubAuth {
   static var JWTToken = ""
   static var accessToken = ""
   static let credentialsLock = Threading.Lock()
+  static let pemFileName = "material-ci-app.2018-05-09.private-key.pem"
 
   class func signAndEncodeJWT() throws -> String {
+    guard let githubAppIDStr = ProcessInfo.processInfo.environment["GITHUB_APP_ID"],
+      let githubAppID = Int(githubAppIDStr) else {
+      LogFile.error("You have not defined GITHUB_APP_ID in your app.yaml file")
+      return ""
+    }
     let fileDirectory = productionPath
     LogFile.debug(fileDirectory)
-    let PEMPath = fileDirectory + "material-ci-app.2018-05-09.private-key.pem"
+    let PEMPath = fileDirectory + pemFileName
     let key = try PEMKey(pemPath: PEMPath)
     let currTime = time(nil)
     let payload = ["iat": currTime,
                    "exp": currTime + (10 * 60),
-                   "iss": 11993]
+                   "iss": githubAppID]
     let jwt1 = try JWTCreator(payload: payload)
     let token = try jwt1.sign(alg: .rs256, key: key)
     JWTToken = token
     return token
-  }
-
-  class func githubHTTPHeaders() -> [String: String] {
-    var headers = [String: String]()
-    headers["Authorization"] = "Bearer \(JWTToken)"
-    LogFile.debug("the JWTToken token is: \(JWTToken)")
-    headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = "Material Automation"
-    return headers
   }
 
   class func getFirstAppInstallationAccessTokenURL() -> String? {
@@ -92,7 +89,7 @@ public class GithubAuth {
     var headers = [String: String]()
     headers["Authorization"] = "Bearer \(JWTToken)"
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = "Material CI App"
+    headers["User-Agent"] = "Material Automation"
     return headers
   }
 
