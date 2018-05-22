@@ -42,6 +42,12 @@ public class GithubAPI {
   static let retryCount = 0
   static var lastGithubAccess = time(nil)
 
+
+  /// This method adds labels to a Github issue through the API.
+  ///
+  /// - Parameters:
+  ///   - url: The url of the issue as a String
+  ///   - labels: The labels to add to the issue
   class func addLabelsToIssue(url: String, labels: [String]) {
     LogFile.debug(labels.description)
     let labelsURL = url + "/labels"
@@ -58,6 +64,12 @@ public class GithubAPI {
     }
   }
 
+
+  /// This method creates and adds a comment to a Github issue through the API.
+  ///
+  /// - Parameters:
+  ///   - url: The url of the issue as a String
+  ///   - comment: The comment text
   class func createComment(url: String, comment: String) {
     let commentsURL = url + "/comments"
     let bodyDict = ["body": comment]
@@ -74,6 +86,13 @@ public class GithubAPI {
     }
   }
 
+
+  /// This method edits an existing Github issue through the API.
+  ///
+  /// - Parameters:
+  ///   - url: The url of the issue as a String
+  ///   - issueEdit: A dictionary where the keys are the items to edit in the issue, and the
+  ///                values are what they should be edited to.
   class func editIssue(url: String, issueEdit: [String: Any]) {
     do {
       let request = GithubCURLRequest(url, .httpMethod(.patch), .postString(try issueEdit.jsonEncodedString()))
@@ -88,6 +107,8 @@ public class GithubAPI {
     }
   }
 
+
+  /// This method bulk updates all the existing Github issues to have labels through the API.
   class func setLabelsForAllIssues() {
     do {
       guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {

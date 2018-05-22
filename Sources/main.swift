@@ -76,10 +76,10 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       var labelsToAdd = [String]()
       let diffURL = PRData.diff_url
       let paths = PRLabelAnalysis.getFilePaths(url: diffURL)
-      let labelsFromPaths = PRLabelAnalysis.grabLabelsFromPaths(paths: paths)
+      let labelsFromPaths = Set(PRLabelAnalysis.grabLabelsFromPaths(paths: paths))
       if (labelsFromPaths.count > 1) {
         //notify of changing multiple components
-        GithubAPI.createComment(url: PRData.issue_url, comment: "The PR is affecting multiple components.")
+        GithubAPI.createComment(url: PRData.issue_url, comment: "This PR affects multiple components.")
       }
       labelsToAdd.append(contentsOf: labelsFromPaths)
       if let titleLabel = PRLabelAnalysis.getTitleLabel(title: PRData.title) {
