@@ -150,6 +150,13 @@ public class GithubAPI {
     }
   }
 
+
+  /// This method receives a relative path inside the repository source code and receives from the Github API
+  /// a JSON containing an array of dictionaries showing the files info in that directory. We
+  /// then return a list of all the file names that are directories.
+  ///
+  /// - Parameter relativePath: The relative path inside the repository source code
+  /// - Returns: an array of all the file names that are directories in the specific path.
   class func getDirectoryContentPathNames(relativePath: String) -> [String] {
     var pathNames = [String]()
     do {
