@@ -76,9 +76,20 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       var labelsToAdd = [String]()
       let diffURL = PRData.diff_url
       let paths = PRLabelAnalysis.getFilePaths(url: diffURL)
-      labelsToAdd.append(contentsOf: PRLabelAnalysis.grabLabelsFromPaths(paths: paths))
+      let labelsFromPaths = Set(PRLabelAnalysis.grabLabelsFromPaths(paths: paths))
+      if (labelsFromPaths.count > 1) {
+        //notify of changing multiple components
+        GithubAPI.createComment(url: PRData.issue_url, comment: "This PR affects multiple components.")
+      }
+      labelsToAdd.append(contentsOf: labelsFromPaths)
       if let titleLabel = PRLabelAnalysis.getTitleLabel(title: PRData.title) {
         labelsToAdd.append(titleLabel)
+      } else if labelsFromPaths.count == 1, let label = labelsFromPaths.first {
+        //update title
+        GithubAPI.editIssue(url: PRData.issue_url, issueEdit: ["title": label + PRData.title])
+        //notify of title change
+        GithubAPI.createComment(url: PRData.issue_url,
+                                comment: "Based on the changes, the title has been prefixed with \(label)")
       }
       if (labelsToAdd.count > 0) {
         GithubAPI.addLabelsToIssue(url: PRData.issue_url, labels: Array(Set(labelsToAdd)))
@@ -93,6 +104,8 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       }
       if (labelsToAdd.count > 0) {
         GithubAPI.addLabelsToIssue(url: issueData.url, labels: Array(Set(labelsToAdd)))
+      } else {
+        GithubAPI.createComment(url: issueData.url, comment: "The title doesn't have a [Component] prefix.")
       }
     }
   }
