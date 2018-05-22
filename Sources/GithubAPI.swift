@@ -150,6 +150,35 @@ public class GithubAPI {
     }
   }
 
+  class func getDirectoryContentPathNames(relativePath: String) -> [String] {
+    var pathNames = [String]()
+    do {
+      guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
+        LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
+        return pathNames
+      }
+      let contentsAPIPath = "/repos/" + repoPath + "/contents/" + relativePath
+      let request = GithubCURLRequest(contentsAPIPath)
+      addAPIHeaders(to: request)
+      let response = try request.perform()
+      let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
+      for path in result {
+        if let type = path["type"] as? String,
+          type == "dir",
+          let pathName = path["name"] as? String {
+          pathNames.append(pathName)
+        }
+      }
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+        return getDirectoryContentPathNames(relativePath: relativePath)
+      }
+      LogFile.info("request result for getDirectoryContentPaths: \(response.bodyString)")
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
+    return pathNames
+  }
+
 }
 
 // API Headers
