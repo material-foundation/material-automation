@@ -130,14 +130,14 @@ public class GithubAPI {
           continue
         }
         var labelsToAdd = [String]()
-        if let titleLabel = PRLabelAnalysis.getTitleLabel(title: issueData.title) {
+        if let titleLabel = LabelAnalysis.getTitleLabel(title: issueData.title) {
           labelsToAdd.append(titleLabel)
         }
         if let PRDict = issue["pull_request"] as? [String: Any] {
           if let diffURL = PRDict["diff_url"] as? String, diffURL.count > 0 {
-            let paths = PRLabelAnalysis.getFilePaths(url: diffURL)
+            let paths = LabelAnalysis.getFilePaths(url: diffURL)
             LogFile.debug(paths.description)
-            labelsToAdd.append(contentsOf: PRLabelAnalysis.grabLabelsFromPaths(paths: paths))
+            labelsToAdd.append(contentsOf: LabelAnalysis.grabLabelsFromPaths(paths: paths))
           }
         }
         if (labelsToAdd.count > 0) {
@@ -164,7 +164,7 @@ public class GithubAPI {
         LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
         return pathNames
       }
-      let contentsAPIPath = "/repos/" + repoPath + "/contents/" + relativePath
+      let contentsAPIPath = githubBaseURL + "/repos/" + repoPath + "/contents/" + relativePath
       let request = GithubCURLRequest(contentsAPIPath)
       addAPIHeaders(to: request)
       let response = try request.perform()

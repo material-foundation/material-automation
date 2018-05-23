@@ -29,6 +29,7 @@ public class GithubAuth {
   static var accessToken = ""
   static let credentialsLock = Threading.Lock()
   static let pemFileName = "material-ci-app.2018-05-09.private-key.pem"
+  static let githubBaseURL = "https://api.github.com"
 
   class func signAndEncodeJWT() throws -> String {
     guard let githubAppIDStr = ProcessInfo.processInfo.environment["GITHUB_APP_ID"],
@@ -55,8 +56,12 @@ public class GithubAuth {
       let request = CURLRequest("https://api.github.com/app/installations")
       addAuthHeaders(to: request)
       let json = try request.perform().bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
-      if let first = json.first {
-        return first["access_tokens_url"] as? String
+      for installation in json {
+        if let account = installation["account"] as? [String: Any],
+          let url = account["url"] as? String,
+          url == githubBaseURL + "/users/material-components" {
+        return installation["access_tokens_url"] as? String
+        }
       }
     } catch {
       LogFile.error("error: \(error) desc: \(error.localizedDescription)")

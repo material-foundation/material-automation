@@ -72,11 +72,11 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
 
   if let PRData = githubData?.PRData {
     if githubData?.action == "synchronize" || githubData?.action == "opened" {
-      PRLabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData)
+      LabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData)
     }
   } else if let issueData = githubData?.issueData {
     if githubData?.action == "synchronize" || githubData?.action == "opened" {
-      PRLabelAnalysis.addAndFixLabelsForIssues(issueData: issueData)
+      LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData)
     }
   }
 
