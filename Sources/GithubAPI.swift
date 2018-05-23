@@ -26,7 +26,17 @@ class GithubCURLRequest: CURLRequest {
 
   override init(options: [CURLRequest.Option]) {
     super.init(options: options)
-
+    var action = "unknown action"
+    outer: for option in options {
+      switch option {
+        case .url(let urlString):
+        action = urlString
+        break outer
+      default:
+        break
+      }
+    }
+    Analytics.trackEvent(category: "Github API", action: action)
     GithubCURLRequest.curlAccessLock.lock()
     if time(nil) - GithubAPI.lastGithubAccess < 1 {
       Threading.sleep(seconds: 1)
