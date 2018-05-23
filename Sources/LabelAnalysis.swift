@@ -246,7 +246,7 @@ class LabelAnalysis {
   class func addNeedsActionabilityReviewLabel(issueData: IssueData) {
     let actionabilityLabel = "Needs actionability review"
     if !issueData.labels.contains(where: { $0 == actionabilityLabel }) {
-      GithubAPI.addLabelsToIssue(url: issueData.url, labels: Array(Set(labelsToAdd)))
+      GithubAPI.addLabelsToIssue(url: issueData.url, labels: [actionabilityLabel])
     }
   }
 }
