@@ -60,6 +60,7 @@ routes.add(method: .post, uri: "/labels/updateall", handler: { request, response
 
 routes.add(method: .post, uri: "/webhook", handler: { request, response in
   LogFile.info("/webhook")
+  Analytics.trackEvent(category: "Incoming", action: "/webhook")
 
   guard let sig = request.header(.custom(name: "X-Hub-Signature")),
     let bodyString = request.postBodyString,
