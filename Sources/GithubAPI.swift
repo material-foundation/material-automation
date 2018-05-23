@@ -130,14 +130,14 @@ public class GithubAPI {
           continue
         }
         var labelsToAdd = [String]()
-        if let titleLabel = PRLabelAnalysis.getTitleLabel(title: issueData.title) {
+        if let titleLabel = LabelAnalysis.getTitleLabel(title: issueData.title) {
           labelsToAdd.append(titleLabel)
         }
         if let PRDict = issue["pull_request"] as? [String: Any] {
           if let diffURL = PRDict["diff_url"] as? String, diffURL.count > 0 {
-            let paths = PRLabelAnalysis.getFilePaths(url: diffURL)
+            let paths = LabelAnalysis.getFilePaths(url: diffURL)
             LogFile.debug(paths.description)
-            labelsToAdd.append(contentsOf: PRLabelAnalysis.grabLabelsFromPaths(paths: paths))
+            labelsToAdd.append(contentsOf: LabelAnalysis.grabLabelsFromPaths(paths: paths))
           }
         }
         if (labelsToAdd.count > 0) {
@@ -148,6 +148,42 @@ public class GithubAPI {
     } catch {
       LogFile.error("error: \(error) desc: \(error.localizedDescription)")
     }
+  }
+
+
+  /// This method receives a relative path inside the repository source code and receives from the Github API
+  /// a JSON containing an array of dictionaries showing the files info in that directory. We
+  /// then return a list of all the file names that are directories.
+  ///
+  /// - Parameter relativePath: The relative path inside the repository source code
+  /// - Returns: an array of all the file names that are directories in the specific path.
+  class func getDirectoryContentPathNames(relativePath: String) -> [String] {
+    var pathNames = [String]()
+    do {
+      guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
+        LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
+        return pathNames
+      }
+      let contentsAPIPath = githubBaseURL + "/repos/" + repoPath + "/contents/" + relativePath
+      let request = GithubCURLRequest(contentsAPIPath)
+      addAPIHeaders(to: request)
+      let response = try request.perform()
+      let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
+      for path in result {
+        if let type = path["type"] as? String,
+          type == "dir",
+          let pathName = path["name"] as? String {
+          pathNames.append(pathName)
+        }
+      }
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+        return getDirectoryContentPathNames(relativePath: relativePath)
+      }
+      LogFile.info("request result for getDirectoryContentPaths: \(response.bodyString)")
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
+    return pathNames
   }
 
 }
