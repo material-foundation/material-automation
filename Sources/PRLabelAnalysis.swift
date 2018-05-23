@@ -89,16 +89,19 @@ class PRLabelAnalysis {
     let componentNames = GithubAPI.getDirectoryContentPathNames(relativePath: "/components")
     var labelsToAdd = [String]()
     if let titleLabel = PRLabelAnalysis.getTitleLabel(title: issueData.title) {
+      let unbracketedTitleLabel = String(titleLabel.dropFirst().dropLast())
       for name in componentNames {
-        let bracketedName = "[" + name + "]"
-        if titleLabel == bracketedName {
+        if unbracketedTitleLabel == name {
           labelsToAdd.append(titleLabel)
           break
-        } else if PRLabelAnalysis.checkIfTwoStringsAreSimilar(str1: bracketedName, str2: titleLabel, threshold: 7) {
+        } else if PRLabelAnalysis.checkIfTwoStringsAreSimilar(str1: name,
+                                                              str2: unbracketedTitleLabel,
+                                                              threshold: 2) {
+          let bracketedName = "[" + name + "]"
           labelsToAdd.append(bracketedName)
 
           // update title
-          if let range = titleLabel.range(of: "]") {
+          if let range = issueData.title.range(of: "]") {
             let titleWithoutLabel = titleLabel[range.upperBound...]
             var updatedTitle = bracketedName
             if titleWithoutLabel.first != " " {
@@ -106,13 +109,10 @@ class PRLabelAnalysis {
             } else {
               updatedTitle += titleWithoutLabel
             }
-            if let lastChar = issueData.title.last, lastChar != "." {
-              updatedTitle += "."
-            }
             GithubAPI.editIssue(url: issueData.url, issueEdit: ["title": updatedTitle])
             // notify of title change
             GithubAPI.createComment(url: issueData.url,
-                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName)")
+                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName).")
           }
           break
         }
@@ -155,11 +155,15 @@ class PRLabelAnalysis {
     labelsToAdd.append(contentsOf: labelsFromPaths)
     if let titleLabel = PRLabelAnalysis.getTitleLabel(title: PRData.title) {
       // check if there is a title label but it needs fixing.
+      let unbracketedTitleLabel = String(titleLabel.dropFirst().dropLast())
       for label in labelsFromPaths {
+        let unbracketedLabel = String(label.dropFirst().dropLast())
         if label == titleLabel {
           break
-        } else if PRLabelAnalysis.checkIfTwoStringsAreSimilar(str1: titleLabel, str2: label, threshold: 7) {
-          if let range = titleLabel.range(of: "]") {
+        } else if PRLabelAnalysis.checkIfTwoStringsAreSimilar(str1: unbracketedLabel,
+                                                              str2: unbracketedTitleLabel,
+                                                              threshold: 2) {
+          if let range = PRData.title.range(of: "]") {
             let titleWithoutLabel = titleLabel[range.upperBound...]
             var updatedTitle = label
             if titleWithoutLabel.first != " " {
@@ -167,13 +171,10 @@ class PRLabelAnalysis {
             } else {
               updatedTitle += titleWithoutLabel
             }
-            if let lastChar = PRData.title.last, lastChar != "." {
-              updatedTitle += "."
-            }
             GithubAPI.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
             // notify of title change
             GithubAPI.createComment(url: PRData.issue_url,
-                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(label)")
+                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(label).")
           }
           break
         }
@@ -187,28 +188,39 @@ class PRLabelAnalysis {
       GithubAPI.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
       // notify of title change
       GithubAPI.createComment(url: PRData.issue_url,
-                              comment: "Based on the changes, the title has been prefixed with \(label)")
+                              comment: "Based on the changes, the title has been prefixed with \(label).")
     }
     if (labelsToAdd.count > 0) {
       GithubAPI.addLabelsToIssue(url: PRData.issue_url, labels: Array(Set(labelsToAdd)))
     }
   }
 
-  /// This method gets two strings and uses the Levenshtein Distance algorithm to find out how
-  /// similar they are. It is also given a threshold as to how similar they can be and returns
-  /// True if the difference is lower than or equal to the threshold, and False otherwise.
-  /// Every deletion/addition/reorder action is worth 1 "point" of difference.
+  /// This method gets two strings and uses the Levenshtein Distance algorithm with some
+  /// initial constraints to find out how similar they are. It is also given a threshold as to
+  /// how similar they can be and returns True if the difference is lower than or equal to the
+  /// threshold, and False otherwise. Every deletion/addition/reorder action is worth
+  /// 1 "point" of difference.
   ///
   /// - Parameters:
-  ///   - str1: The first string to compare
-  ///   - str2: The second string to compare
+  ///   - str1: The first string to compare. This is the "correct" string that the other string is compared to.
+  ///   - str2: The second string to compare.
   ///   - threshold: The given threshold of allowed difference
   /// - Returns: returns true if the strings are similar based on the threshold, and false otherwise.
   class func checkIfTwoStringsAreSimilar(str1: String, str2: String, threshold: Int) -> Bool {
-    var distance = [[Int]]()
-    for _ in 0...str1.count {
-      distance.append(Array(repeating: 0, count: str2.count + 1))
+    if str1.isEmpty || str2.isEmpty {
+      return false
     }
+
+    var str2 = str2
+    if let ind = str2.index(of: str1.first!), ind != str1.startIndex {
+      str2 = String(str2[ind...])
+    }
+
+    if str2.contains(str1) {
+      return true
+    }
+
+    var distance = Array(repeating: Array(repeating: 0, count: str2.count + 1), count: str1.count + 1)
     for i in 1...str1.count {
       distance[i][0] = i
     }
