@@ -77,6 +77,7 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
   } else if let issueData = githubData?.issueData {
     if githubData?.action == "synchronize" || githubData?.action == "opened" {
       LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData)
+      LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData)
     }
   }
 

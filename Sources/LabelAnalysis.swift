@@ -242,4 +242,11 @@ class LabelAnalysis {
     return distance[str1.count][str2.count] <= threshold
   }
 
+  /// Adds a "Needs actionability review" label to the issue.
+  class func addNeedsActionabilityReviewLabel(issueData: IssueData) {
+    let actionabilityLabel = "Needs actionability review"
+    if !issueData.labels.contains(where: { $0 == actionabilityLabel }) {
+      GithubAPI.addLabelsToIssue(url: issueData.url, labels: Array(Set(labelsToAdd)))
+    }
+  }
 }
