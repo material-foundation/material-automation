@@ -181,10 +181,7 @@ class PRLabelAnalysis {
       }
     } else if labelsFromPaths.count == 1, let label = labelsFromPaths.first {
       // check if there is no title label and update accordingly.
-      var updatedTitle = label + " " + PRData.title
-      if let lastChar = PRData.title.last, lastChar != "." {
-        updatedTitle += "."
-      }
+      let updatedTitle = label + " " + PRData.title
       GithubAPI.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
       // notify of title change
       GithubAPI.createComment(url: PRData.issue_url,
