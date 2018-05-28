@@ -69,16 +69,31 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       response.completed(status: .unauthorized)
       return
   }
-  let githubData = GithubData.createGithubData(from: request.postBodyString!)
 
-  if let PRData = githubData?.PRData {
-    if githubData?.action == "synchronize" || githubData?.action == "opened" {
-      LabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData)
+  guard let githubData = GithubData.createGithubData(from: bodyString),
+  let installationID = githubData.installationID else {
+    LogFile.error("couldn't parse incoming webhook request")
+    response.completed(status: .ok)
+    return
+  }
+
+  guard GithubAuth.getAccessToken(installationID: installationID, checkCached: true) != nil else {
+    LogFile.error("couldn't get an access token for installation: \(installationID)")
+    response.completed(status: .unauthorized)
+    return
+  }
+
+  if let PRData = githubData.PRData {
+    if githubData.action == "synchronize" || githubData.action == "opened" {
+      LabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData,
+                                                   installation: installationID)
     }
-  } else if let issueData = githubData?.issueData {
-    if githubData?.action == "synchronize" || githubData?.action == "opened" {
-      LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData)
-      LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData)
+  } else if let issueData = githubData.issueData {
+    if githubData.action == "synchronize" || githubData.action == "opened" {
+      LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData,
+                                             installation: installationID)
+      LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData,
+                                                     installation: installationID)
     }
   }
 

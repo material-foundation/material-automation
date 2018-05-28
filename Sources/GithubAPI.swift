@@ -51,18 +51,17 @@ public class GithubAPI {
   static let retryCount = 0
   static var lastGithubAccess = time(nil)
 
-
   /// This method adds labels to a Github issue through the API.
   ///
   /// - Parameters:
   ///   - url: The url of the issue as a String
   ///   - labels: The labels to add to the issue
-  class func addLabelsToIssue(url: String, labels: [String]) {
+  class func addLabelsToIssue(url: String, labels: [String], installation: installation) {
     LogFile.debug(labels.description)
     let labelsURL = url + "/labels"
     do {
       let request = GithubCURLRequest(labelsURL, .postString(labels.description))
-      addAPIHeaders(to: request)
+      addAPIHeaders(to: request, installation: installation)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         addLabelsToIssue(url: url, labels: labels)
@@ -79,12 +78,12 @@ public class GithubAPI {
   /// - Parameters:
   ///   - url: The url of the issue as a String
   ///   - comment: The comment text
-  class func createComment(url: String, comment: String) {
+  class func createComment(url: String, comment: String, installation: installation) {
     let commentsURL = url + "/comments"
     let bodyDict = ["body": comment]
     do {
       let request = GithubCURLRequest(commentsURL, .postString(try bodyDict.jsonEncodedString()))
-      addAPIHeaders(to: request)
+      addAPIHeaders(to: request, installation: installation)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         createComment(url: url, comment: comment)
@@ -102,10 +101,10 @@ public class GithubAPI {
   ///   - url: The url of the issue as a String
   ///   - issueEdit: A dictionary where the keys are the items to edit in the issue, and the
   ///                values are what they should be edited to.
-  class func editIssue(url: String, issueEdit: [String: Any]) {
+  class func editIssue(url: String, issueEdit: [String: Any], installation: installation) {
     do {
       let request = GithubCURLRequest(url, .httpMethod(.patch), .postString(try issueEdit.jsonEncodedString()))
-      addAPIHeaders(to: request)
+      addAPIHeaders(to: request, installation: installation)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         editIssue(url: url, issueEdit: issueEdit)
@@ -128,7 +127,7 @@ public class GithubAPI {
       let issuesURL = DefaultConfigParams.githubBaseURL + relativePathForRepo + "/issues"
       let params = "?state=all"
       let request = GithubCURLRequest(issuesURL + params)
-      addAPIHeaders(to: request)
+      addAPIHeaders(to: request, installation: installation)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         setLabelsForAllIssues()
@@ -166,16 +165,16 @@ public class GithubAPI {
   ///
   /// - Parameter relativePath: The relative path inside the repository source code
   /// - Returns: an array of all the file names that are directories in the specific path.
-  class func getDirectoryContentPathNames(relativePath: String) -> [String] {
+  class func getDirectoryContentPathNames(relativePath: String, installation: installation) -> [String] {
     var pathNames = [String]()
     do {
       guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
         LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
         return pathNames
       }
-      let contentsAPIPath = githubBaseURL + "/repos/" + repoPath + "/contents/" + relativePath
+      let contentsAPIPath = DefaultConfigParams.githubBaseURL + "/repos/" + repoPath + "/contents/" + relativePath
       let request = GithubCURLRequest(contentsAPIPath)
-      addAPIHeaders(to: request)
+      addAPIHeaders(to: request, installation: installation)
       let response = try request.perform()
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for path in result {
@@ -199,7 +198,9 @@ public class GithubAPI {
 
 // API Headers
 extension GithubAPI {
-  class func githubAPIHTTPHeaders() -> [String: String] {
+  class func githubAPIHTTPHeaders(installation: String) -> [String: String] {
+    
+
     let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
     headers["Authorization"] = "token \(GithubAuth.accessToken)"
@@ -209,8 +210,8 @@ extension GithubAPI {
     return headers
   }
 
-  class func addAPIHeaders(to request: CURLRequest) {
-    let headersDict = githubAPIHTTPHeaders()
+  class func addAPIHeaders(to request: CURLRequest, installation: String) {
+    let headersDict = githubAPIHTTPHeaders(installation: installation)
     for (k,v) in headersDict {
       request.addHeader(HTTPRequestHeader.Name.fromStandard(name: k), value: v)
     }
