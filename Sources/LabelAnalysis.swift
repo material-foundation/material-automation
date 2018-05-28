@@ -89,7 +89,7 @@ class LabelAnalysis {
     let componentNames = githubAPI.getDirectoryContentPathNames(relativePath: "components",
                                                                 repoURL: issueData.repository_url)
     var labelsToAdd = [String]()
-    let titleLabel = getTitleLabel(title: issueData.title)
+    let titleLabel = getTitleLabel(title: issueData.title, installation: installation)
     if let titleLabel = titleLabel {
       let unbracketedTitleLabel = String(titleLabel.dropFirst().dropLast())
       // Check if title label is a component name
