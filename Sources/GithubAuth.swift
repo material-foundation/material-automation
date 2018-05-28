@@ -23,21 +23,18 @@ import PerfectLogger
 import PerfectThread
 
 public class GithubAuth {
-  static let productionPath = "/root/MaterialAutomation/"
-  static let localPath = Dir.workingDir.path
   static var JWTToken = ""
   static var accessToken = ""
   static let credentialsLock = Threading.Lock()
-  static let pemFileName = "material-ci-app.2018-05-09.private-key.pem"
-  static let githubBaseURL = "https://api.github.com"
 
   class func signAndEncodeJWT() throws -> String {
-    guard let githubAppIDStr = ProcessInfo.processInfo.environment["GITHUB_APP_ID"],
+    guard let githubAppIDStr = ConfigManager.shared?.configDict["GITHUB_APP_ID"] as? String,
+      let pemFileName = ConfigManager.shared?.configDict["PEM_FILE_NAME"] as? String,
       let githubAppID = Int(githubAppIDStr) else {
       LogFile.error("You have not defined GITHUB_APP_ID in your app.yaml file")
       return ""
     }
-    let fileDirectory = productionPath
+    let fileDirectory = DefaultConfigParams.projectPath
     LogFile.debug(fileDirectory)
     let PEMPath = fileDirectory + pemFileName
     let key = try PEMKey(pemPath: PEMPath)
@@ -53,7 +50,7 @@ public class GithubAuth {
 
   class func getFirstAppInstallationAccessTokenURL() -> String? {
     do {
-      let request = CURLRequest("https://api.github.com/app/installations")
+      let request = CURLRequest(DefaultConfigParams.githubBaseURL + "/app/installations")
       addAuthHeaders(to: request)
       let json = try request.perform().bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for installation in json {
@@ -91,10 +88,11 @@ public class GithubAuth {
   }
 
   class func githubAuthHTTPHeaders() -> [String: String] {
+    let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
     headers["Authorization"] = "Bearer \(JWTToken)"
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = "Material Automation"
+    headers["User-Agent"] = userAgent
     return headers
   }
 

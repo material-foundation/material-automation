@@ -48,7 +48,6 @@ class GithubCURLRequest: CURLRequest {
 }
 
 public class GithubAPI {
-  static let githubBaseURL = "https://api.github.com"
   static let retryCount = 0
   static var lastGithubAccess = time(nil)
 
@@ -121,12 +120,12 @@ public class GithubAPI {
   /// This method bulk updates all the existing Github issues to have labels through the API.
   class func setLabelsForAllIssues() {
     do {
-      guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
+      guard let repoPath = ConfigManager.shared?.configDict["GITHUB_REPO_PATH"] as? String else {
         LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
         return
       }
       let relativePathForRepo = "/repos/" + repoPath
-      let issuesURL = githubBaseURL + relativePathForRepo + "/issues"
+      let issuesURL = DefaultConfigParams.githubBaseURL + relativePathForRepo + "/issues"
       let params = "?state=all"
       let request = GithubCURLRequest(issuesURL + params)
       addAPIHeaders(to: request)
@@ -201,11 +200,12 @@ public class GithubAPI {
 // API Headers
 extension GithubAPI {
   class func githubAPIHTTPHeaders() -> [String: String] {
+    let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
     headers["Authorization"] = "token \(GithubAuth.accessToken)"
     LogFile.debug("the access token is: \(GithubAuth.accessToken)")
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = "Material Automation"
+    headers["User-Agent"] = userAgent
     return headers
   }
 

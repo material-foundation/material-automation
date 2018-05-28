@@ -40,7 +40,7 @@ routes.add(method: .get, uri: "/_ah/health", handler: { request, response in
 // Basic GET request
 routes.add(method: .get, uri: "/hello", handler: { request, response in
   LogFile.info("GET - /hello route handler...")
-  response.setBody(string: "Hello from Swift on Google App Engine flexible environment!")
+  response.setBody(string: DefaultConfigParams.helloMessage)
   response.completed()
 })
 
