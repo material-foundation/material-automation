@@ -91,23 +91,29 @@ class LabelAnalysis {
     let titleLabel = getTitleLabel(title: issueData.title)
     if let titleLabel = titleLabel {
       let unbracketedTitleLabel = String(titleLabel.dropFirst().dropLast())
-      for name in componentNames {
-        if name.lowercased() == name {
-          continue
+      // Check if title label is a component name
+      if componentNames.contains(unbracketedTitleLabel) {
+        labelsToAdd.append(titleLabel)
+      } else {
+        // Check if it's close to a component name, and then fix it
+        var labelDist = [String: Int]()
+        for name in componentNames {
+          // This isn't a component folder, continue
+          if name.lowercased() == name {
+            continue
+          }
+          labelDist[name] = getStringDistance(str1: name.lowercased(),
+                                              str2: unbracketedTitleLabel.lowercased())
         }
-        if unbracketedTitleLabel == name {
-          labelsToAdd.append(titleLabel)
-          break
-        } else if checkIfTwoStringsAreSimilar(str1: name,
-                                              str2: unbracketedTitleLabel,
-                                              threshold: 2) {
-          let bracketedName = "[" + name + "]"
-          labelsToAdd.append(bracketedName)
-
+        // get minimum distance
+        let (lbl, dist) = labelDist.reduce(("", Int.max)) { $0.1 > $1.value ? ($1.key, $1.value) : $0 }
+        if dist <= 2 {
+          let bracketedLabel = "[" + lbl + "]"
+          labelsToAdd.append(bracketedLabel)
           // update title
           if let range = issueData.title.range(of: "]") {
             let titleWithoutLabel = issueData.title[range.upperBound...]
-            var updatedTitle = bracketedName
+            var updatedTitle = bracketedLabel
             if titleWithoutLabel.first != " " {
               updatedTitle += " " + titleWithoutLabel
             } else {
@@ -116,9 +122,8 @@ class LabelAnalysis {
             GithubAPI.editIssue(url: issueData.url, issueEdit: ["title": updatedTitle])
             // notify of title change
             GithubAPI.createComment(url: issueData.url,
-                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName).")
+                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedLabel).")
           }
-          break
         }
       }
     }
@@ -158,18 +163,24 @@ class LabelAnalysis {
     }
     labelsToAdd.append(contentsOf: labelsFromPaths)
     if let titleLabel = getTitleLabel(title: PRData.title) {
-      // check if there is a title label but it needs fixing.
-      let unbracketedTitleLabel = String(titleLabel.dropFirst().dropLast())
-      for label in labelsFromPaths {
-        let unbracketedLabel = String(label.dropFirst().dropLast())
-        if label == titleLabel {
-          break
-        } else if checkIfTwoStringsAreSimilar(str1: unbracketedLabel,
-                                                              str2: unbracketedTitleLabel,
-                                                              threshold: 2) {
+      // The label in the title isn't part of the changed componentry
+      if !labelsFromPaths.contains(titleLabel) {
+        // Check if it's close to a component name, and then fix it
+        var labelDist = [String: Int]()
+        let unbracketedTitleLabel = String(titleLabel.dropFirst().dropLast())
+        for label in labelsFromPaths {
+          let unbracketedLabel = String(label.dropFirst().dropLast())
+          labelDist[label] = getStringDistance(str1: unbracketedLabel.lowercased(),
+                                              str2: unbracketedTitleLabel.lowercased())
+        }
+        // get minimum distance
+        let (lbl, dist) = labelDist.reduce(("", Int.max)) { $0.1 > $1.value ? ($1.key, $1.value) : $0 }
+        if dist <= 2 {
+          labelsToAdd.append(lbl)
+          // update title
           if let range = PRData.title.range(of: "]") {
             let titleWithoutLabel = PRData.title[range.upperBound...]
-            var updatedTitle = label
+            var updatedTitle = lbl
             if titleWithoutLabel.first != " " {
               updatedTitle += " " + titleWithoutLabel
             } else {
@@ -178,9 +189,8 @@ class LabelAnalysis {
             GithubAPI.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
             // notify of title change
             GithubAPI.createComment(url: PRData.issue_url,
-                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(label).")
+                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(lbl).")
           }
-          break
         }
       }
     } else if labelsFromPaths.count == 1, let label = labelsFromPaths.first {
@@ -196,31 +206,18 @@ class LabelAnalysis {
     }
   }
 
-  /// This method gets two strings and uses the Levenshtein Distance algorithm with some
-  /// initial constraints to find out how similar they are. It is also given a threshold as to
-  /// how similar they can be and returns True if the difference is lower than or equal to the
-  /// threshold, and False otherwise. Every deletion/addition/reorder action is worth
-  /// 1 "point" of difference.
+  /// This method gets two strings and uses the Levenshtein Distance algorithm
+  /// to find out how similar they are. It returns the difference between the two strings
+  /// as the number of deletions/additions/reorders needed to reach from one string to another.
   ///
   /// - Parameters:
-  ///   - str1: The first string to compare. This is the "correct" string that the other string is compared to.
+  ///   - str1: The first string to compare.
   ///   - str2: The second string to compare.
-  ///   - threshold: The given threshold of allowed difference
-  /// - Returns: returns true if the strings are similar based on the threshold, and false otherwise.
-  class func checkIfTwoStringsAreSimilar(str1: String, str2: String, threshold: Int) -> Bool {
+  /// - Returns: the levenshtein difference between the two strings.
+  class func getStringDistance(str1: String, str2: String) -> Int {
     if str1.isEmpty || str2.isEmpty {
-      return false
+      return Int.max
     }
-    let str1 = str1.lowercased()
-    var str2 = str2.lowercased()
-    if let ind = str2.index(of: str1.first!), ind != str1.startIndex {
-      str2 = String(str2[ind...])
-    }
-
-    if str2.contains(str1) {
-      return true
-    }
-
     var distance = Array(repeating: Array(repeating: 0, count: str2.count + 1), count: str1.count + 1)
     for i in 1...str1.count {
       distance[i][0] = i
@@ -239,7 +236,7 @@ class LabelAnalysis {
         }
       }
     }
-    return distance[str1.count][str2.count] <= threshold
+    return distance[str1.count][str2.count]
   }
 
   /// Adds a "Needs actionability review" label to the issue.
