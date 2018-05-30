@@ -21,9 +21,38 @@ import PerfectLogger
 import PerfectCrypto
 import PerfectThread
 
-class GithubCURLRequest: CURLRequest {
-  static let curlAccessLock = Threading.Lock()
+class GithubManager {
+  static let shared = GithubManager()
 
+  let githubInstancesLock = Threading.RWLock()
+  private var githubInstances = [String: GithubAPI]()
+
+  func getGithubInstance(for installation: String) -> GithubAPI? {
+    var value: GithubAPI?
+    githubInstancesLock.doWithReadLock {
+      value = githubInstances[installation]
+    }
+    return value
+  }
+
+  func addGithubInstance(for installation: String) -> GithubAPI? {
+    if let githubInstanceCached = getGithubInstance(for: installation) {
+      return githubInstanceCached
+    }
+
+    return githubInstancesLock.doWithWriteLock { () -> GithubAPI? in
+      guard let accessToken = GithubAuth.getAccessToken(installationID: installation) else {
+        LogFile.error("couldn't get an access token for installation: \(installation)")
+        return nil
+      }
+      let githubInstance = GithubAPI(accessToken: accessToken)
+      githubInstances[accessToken] = githubInstance
+      return githubInstance
+    }
+  }
+}
+
+class GithubCURLRequest: CURLRequest {
   override init(options: [CURLRequest.Option]) {
     super.init(options: options)
     var action = "unknown action"
@@ -37,31 +66,31 @@ class GithubCURLRequest: CURLRequest {
       }
     }
     Analytics.trackEvent(category: "Github API", action: action)
-    GithubCURLRequest.curlAccessLock.lock()
-    if time(nil) - GithubAPI.lastGithubAccess < 1 {
-      Threading.sleep(seconds: 1)
-    }
-    GithubAPI.lastGithubAccess = time(nil)
-    GithubCURLRequest.curlAccessLock.unlock()
   }
-
 }
 
 public class GithubAPI {
-  static let retryCount = 0
-  static var lastGithubAccess = time(nil)
+
+  var accessToken: String
+  let curlAccessLock = Threading.Lock()
+  var lastGithubAccess = time(nil)
+
+  init(accessToken: String) {
+    self.accessToken = accessToken
+  }
 
   /// This method adds labels to a Github issue through the API.
   ///
   /// - Parameters:
   ///   - url: The url of the issue as a String
   ///   - labels: The labels to add to the issue
-  class func addLabelsToIssue(url: String, labels: [String], installation: installation) {
+  func addLabelsToIssue(url: String, labels: [String]) {
     LogFile.debug(labels.description)
     let labelsURL = url + "/labels"
     do {
+      APIOneSecondDelay()
       let request = GithubCURLRequest(labelsURL, .postString(labels.description))
-      addAPIHeaders(to: request, installation: installation)
+      addAPIHeaders(to: request)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         addLabelsToIssue(url: url, labels: labels)
@@ -72,18 +101,26 @@ public class GithubAPI {
     }
   }
 
+  func APIOneSecondDelay() {
+    self.curlAccessLock.lock()
+    if time(nil) - self.lastGithubAccess < 1 {
+      Threading.sleep(seconds: 1)
+    }
+    self.lastGithubAccess = time(nil)
+    self.curlAccessLock.unlock()
+  }
 
   /// This method creates and adds a comment to a Github issue through the API.
   ///
   /// - Parameters:
   ///   - url: The url of the issue as a String
   ///   - comment: The comment text
-  class func createComment(url: String, comment: String, installation: installation) {
+  func createComment(url: String, comment: String) {
     let commentsURL = url + "/comments"
     let bodyDict = ["body": comment]
     do {
       let request = GithubCURLRequest(commentsURL, .postString(try bodyDict.jsonEncodedString()))
-      addAPIHeaders(to: request, installation: installation)
+      addAPIHeaders(to: request)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         createComment(url: url, comment: comment)
@@ -101,10 +138,10 @@ public class GithubAPI {
   ///   - url: The url of the issue as a String
   ///   - issueEdit: A dictionary where the keys are the items to edit in the issue, and the
   ///                values are what they should be edited to.
-  class func editIssue(url: String, issueEdit: [String: Any], installation: installation) {
+  func editIssue(url: String, issueEdit: [String: Any]) {
     do {
       let request = GithubCURLRequest(url, .httpMethod(.patch), .postString(try issueEdit.jsonEncodedString()))
-      addAPIHeaders(to: request, installation: installation)
+      addAPIHeaders(to: request)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         editIssue(url: url, issueEdit: issueEdit)
@@ -117,7 +154,7 @@ public class GithubAPI {
 
 
   /// This method bulk updates all the existing Github issues to have labels through the API.
-  class func setLabelsForAllIssues() {
+  func setLabelsForAllIssues() {
     do {
       guard let repoPath = ConfigManager.shared?.configDict["GITHUB_REPO_PATH"] as? String else {
         LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
@@ -127,7 +164,7 @@ public class GithubAPI {
       let issuesURL = DefaultConfigParams.githubBaseURL + relativePathForRepo + "/issues"
       let params = "?state=all"
       let request = GithubCURLRequest(issuesURL + params)
-      addAPIHeaders(to: request, installation: installation)
+      addAPIHeaders(to: request)
       let response = try request.perform()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
         setLabelsForAllIssues()
@@ -149,7 +186,7 @@ public class GithubAPI {
           }
         }
         if (labelsToAdd.count > 0) {
-          GithubAPI.addLabelsToIssue(url: issueData.url, labels: Array(Set(labelsToAdd)))
+          addLabelsToIssue(url: issueData.url, labels: Array(Set(labelsToAdd)))
         }
       }
       LogFile.info("request result for setLabelsForAllIssues: \(result)")
@@ -165,7 +202,7 @@ public class GithubAPI {
   ///
   /// - Parameter relativePath: The relative path inside the repository source code
   /// - Returns: an array of all the file names that are directories in the specific path.
-  class func getDirectoryContentPathNames(relativePath: String, installation: installation) -> [String] {
+  func getDirectoryContentPathNames(relativePath: String) -> [String] {
     var pathNames = [String]()
     do {
       guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
@@ -174,7 +211,7 @@ public class GithubAPI {
       }
       let contentsAPIPath = DefaultConfigParams.githubBaseURL + "/repos/" + repoPath + "/contents/" + relativePath
       let request = GithubCURLRequest(contentsAPIPath)
-      addAPIHeaders(to: request, installation: installation)
+      addAPIHeaders(to: request)
       let response = try request.perform()
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for path in result {
@@ -198,20 +235,18 @@ public class GithubAPI {
 
 // API Headers
 extension GithubAPI {
-  class func githubAPIHTTPHeaders(installation: String) -> [String: String] {
-    
-
+  func githubAPIHTTPHeaders() -> [String: String] {
     let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
-    headers["Authorization"] = "token \(GithubAuth.accessToken)"
-    LogFile.debug("the access token is: \(GithubAuth.accessToken)")
+    headers["Authorization"] = "token \(self.accessToken)"
+    LogFile.debug("the access token is: \(self.accessToken)")
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
     headers["User-Agent"] = userAgent
     return headers
   }
 
-  class func addAPIHeaders(to request: CURLRequest, installation: String) {
-    let headersDict = githubAPIHTTPHeaders(installation: installation)
+  func addAPIHeaders(to request: CURLRequest) {
+    let headersDict = githubAPIHTTPHeaders()
     for (k,v) in headersDict {
       request.addHeader(HTTPRequestHeader.Name.fromStandard(name: k), value: v)
     }

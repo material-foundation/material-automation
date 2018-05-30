@@ -85,11 +85,10 @@ class LabelAnalysis {
   /// submitter of the change.
   ///
   /// - Parameter issueData: The incoming issue data
-  class func addAndFixLabelsForIssues(issueData: IssueData, installation: String) {
-    let componentNames = GithubAPI.getDirectoryContentPathNames(relativePath: "components",
-                                                                installation: installation)
+  class func addAndFixLabelsForIssues(issueData: IssueData, githubInstance: GithubAPI) {
+    let componentNames = githubInstance.getDirectoryContentPathNames(relativePath: "components")
     var labelsToAdd = [String]()
-    let titleLabel = getTitleLabel(title: issueData.title, installation: installation)
+    let titleLabel = getTitleLabel(title: issueData.title)
     if let titleLabel = titleLabel {
       let unbracketedTitleLabel = String(titleLabel.dropFirst().dropLast())
       // Check if title label is a component name
@@ -120,25 +119,21 @@ class LabelAnalysis {
             } else {
               updatedTitle += titleWithoutLabel
             }
-            GithubAPI.editIssue(url: issueData.url,
-                                issueEdit: ["title": updatedTitle],
-                                installation: installation)
+            githubInstance.editIssue(url: issueData.url,
+                                issueEdit: ["title": updatedTitle])
             // notify of title change
-            GithubAPI.createComment(url: issueData.url,
-                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName).",
-                                    installation: installation)
+            githubInstance.createComment(url: issueData.url,
+                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName).")
           }
         }
       }
     }
     if (labelsToAdd.count > 0) {
-      GithubAPI.addLabelsToIssue(url: issueData.url,
-                                 labels: Array(Set(labelsToAdd)),
-                                 installation: installation)
+      githubInstance.addLabelsToIssue(url: issueData.url,
+                                 labels: Array(Set(labelsToAdd)))
     } else if titleLabel == nil {
-      GithubAPI.createComment(url: issueData.url,
-                              comment: "The title doesn't have a [Component] prefix.",
-                              installation: installation)
+      githubInstance.createComment(url: issueData.url,
+                              comment: "The title doesn't have a [Component] prefix.")
     }
   }
 
@@ -158,14 +153,14 @@ class LabelAnalysis {
   /// that multiple components are being modified.
   ///
   /// - Parameter PRData: The incoming pull request data
-  class func addAndFixLabelsForPullRequests(PRData: PullRequestData, installation: String) {
+  class func addAndFixLabelsForPullRequests(PRData: PullRequestData, githubInstance: GithubAPI) {
     var labelsToAdd = [String]()
     let diffURL = PRData.diff_url
     let paths = getFilePaths(url: diffURL)
     let labelsFromPaths = Set(grabLabelsFromPaths(paths: paths))
     if (labelsFromPaths.count > 1) {
       // notify of changing multiple components
-      GithubAPI.createComment(url: PRData.issue_url,
+      githubInstance.createComment(url: PRData.issue_url,
                               comment: "This PR affects multiple components.")
     }
     labelsToAdd.append(contentsOf: labelsFromPaths)
@@ -193,7 +188,7 @@ class LabelAnalysis {
             } else {
               updatedTitle += titleWithoutLabel
             }
-            GithubAPI.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
+            githubInstance.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
             // notify of title change
             GithubAPI.createComment(url: PRData.issue_url,
                                     comment: "Your title label prefix has been renamed from \(titleLabel) to \(lbl).")
@@ -203,13 +198,13 @@ class LabelAnalysis {
     } else if labelsFromPaths.count == 1, let label = labelsFromPaths.first {
       // check if there is no title label and update accordingly.
       let updatedTitle = label + " " + PRData.title
-      GithubAPI.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
+      githubInstance.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
       // notify of title change
-      GithubAPI.createComment(url: PRData.issue_url,
+      githubInstance.createComment(url: PRData.issue_url,
                               comment: "Based on the changes, the title has been prefixed with \(label).")
     }
     if (labelsToAdd.count > 0) {
-      GithubAPI.addLabelsToIssue(url: PRData.issue_url, labels: Array(Set(labelsToAdd)))
+      githubInstance.addLabelsToIssue(url: PRData.issue_url, labels: Array(Set(labelsToAdd)))
     }
   }
 
@@ -247,10 +242,10 @@ class LabelAnalysis {
   }
 
   /// Adds a "Needs actionability review" label to the issue.
-  class func addNeedsActionabilityReviewLabel(issueData: IssueData, installation: String) {
+  class func addNeedsActionabilityReviewLabel(issueData: IssueData, githubInstance: GithubAPI) {
     let actionabilityLabel = "Needs actionability review"
     if !issueData.labels.contains(where: { $0 == actionabilityLabel }) {
-      GithubAPI.addLabelsToIssue(url: issueData.url, labels: [actionabilityLabel], installation: String)
+      githubInstance.addLabelsToIssue(url: issueData.url, labels: [actionabilityLabel])
     }
   }
 }
