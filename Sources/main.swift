@@ -48,7 +48,8 @@ routes.add(method: .post, uri: "/labels/updateall", handler: { request, response
   LogFile.info("/labels/updateall")
 
   guard let password = request.header(.authorization),
-    GithubAuth.verifyGooglerPassword(googlerPassword: password) else {
+    GithubAuth.verifyGooglerPassword(googlerPassword: password),
+    let installationID = request.postBodyString else {
       response.completed(status: .unauthorized)
       return
   }

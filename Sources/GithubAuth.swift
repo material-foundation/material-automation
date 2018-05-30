@@ -77,10 +77,7 @@ public class GithubAuth {
     return nil
   }
 
-  class func getAccessToken(installationID: String, checkCached: Bool) -> String? {
-    if checkCached, let accessToken = UserDefaults.standard.string(forKey: installationID) {
-      return accessToken
-    }
+  class func getAccessToken(installationID: String) -> String? {
 
     guard let accessTokenURL = getInstallationAccessTokenURL(installationID: installationID) else {
       LogFile.error("Could not retrieve the access token URL for the installation ID: \(installationID)")
