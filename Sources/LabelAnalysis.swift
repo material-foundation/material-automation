@@ -120,20 +120,20 @@ class LabelAnalysis {
               updatedTitle += titleWithoutLabel
             }
             githubInstance.editIssue(url: issueData.url,
-                                issueEdit: ["title": updatedTitle])
+                                     issueEdit: ["title": updatedTitle])
             // notify of title change
             githubInstance.createComment(url: issueData.url,
-                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName).")
+                                         comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName).")
           }
         }
       }
     }
     if (labelsToAdd.count > 0) {
       githubInstance.addLabelsToIssue(url: issueData.url,
-                                 labels: Array(Set(labelsToAdd)))
+                                      labels: Array(Set(labelsToAdd)))
     } else if titleLabel == nil {
       githubInstance.createComment(url: issueData.url,
-                              comment: "The title doesn't have a [Component] prefix.")
+                                   comment: "The title doesn't have a [Component] prefix.")
     }
   }
 
@@ -161,7 +161,7 @@ class LabelAnalysis {
     if (labelsFromPaths.count > 1) {
       // notify of changing multiple components
       githubInstance.createComment(url: PRData.issue_url,
-                              comment: "This PR affects multiple components.")
+                                   comment: "This PR affects multiple components.")
     }
     labelsToAdd.append(contentsOf: labelsFromPaths)
     if let titleLabel = getTitleLabel(title: PRData.title) {
@@ -201,7 +201,7 @@ class LabelAnalysis {
       githubInstance.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
       // notify of title change
       githubInstance.createComment(url: PRData.issue_url,
-                              comment: "Based on the changes, the title has been prefixed with \(label).")
+                                   comment: "Based on the changes, the title has been prefixed with \(label).")
     }
     if (labelsToAdd.count > 0) {
       githubInstance.addLabelsToIssue(url: PRData.issue_url, labels: Array(Set(labelsToAdd)))

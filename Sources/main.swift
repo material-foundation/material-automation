@@ -54,7 +54,7 @@ routes.add(method: .post, uri: "/labels/updateall", handler: { request, response
       return
   }
 
-  guard let githubAPI = GithubManager.shared.addGithubInstance(for: installationID) else {
+  guard let githubAPI = GithubManager.shared.getGithubInstance(for: installationID) else {
     LogFile.error("could not get a github instance with an access token for \(installationID)")
     response.completed(status: .unauthorized)
     return
@@ -85,7 +85,7 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
     return
   }
 
-  guard let githubAPI = GithubManager.shared.addGithubInstance(for: installationID) else {
+  guard let githubAPI = GithubManager.shared.getGithubInstance(for: installationID) else {
     LogFile.error("could not get a github instance with an access token for \(installationID)")
     response.completed(status: .unauthorized)
     return

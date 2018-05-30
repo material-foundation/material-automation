@@ -27,7 +27,7 @@ class GithubManager {
   let githubInstancesLock = Threading.RWLock()
   private var githubInstances = [String: GithubAPI]()
 
-  func getGithubInstance(for installation: String) -> GithubAPI? {
+  private func getCachedGithubInstance(for installation: String) -> GithubAPI? {
     var value: GithubAPI?
     githubInstancesLock.doWithReadLock {
       value = githubInstances[installation]
@@ -35,8 +35,8 @@ class GithubManager {
     return value
   }
 
-  func addGithubInstance(for installation: String) -> GithubAPI? {
-    if let githubInstanceCached = getGithubInstance(for: installation) {
+  func getGithubInstance(for installation: String) -> GithubAPI? {
+    if let githubInstanceCached = getCachedGithubInstance(for: installation) {
       return githubInstanceCached
     }
 
@@ -58,7 +58,7 @@ class GithubCURLRequest: CURLRequest {
     var action = "unknown action"
     outer: for option in options {
       switch option {
-        case .url(let urlString):
+      case .url(let urlString):
         action = urlString
         break outer
       default:
@@ -86,28 +86,23 @@ public class GithubAPI {
   ///   - labels: The labels to add to the issue
   func addLabelsToIssue(url: String, labels: [String]) {
     LogFile.debug(labels.description)
-    let labelsURL = url + "/labels"
-    do {
-      APIOneSecondDelay()
+
+    let performRequest = { () -> CURLResponse in
+      let labelsURL = url + "/labels"
       let request = GithubCURLRequest(labelsURL, .postString(labels.description))
-      addAPIHeaders(to: request)
-      let response = try request.perform()
+      self.addAPIHeaders(to: request)
+      return try request.perform()
+    }
+
+    do {
+      var response = try performRequest()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
-        addLabelsToIssue(url: url, labels: labels)
+        response = try performRequest()
       }
       LogFile.info("request result for addLabels: \(response.bodyString)")
     } catch {
       LogFile.error("error: \(error) desc: \(error.localizedDescription)")
     }
-  }
-
-  func APIOneSecondDelay() {
-    self.curlAccessLock.lock()
-    if time(nil) - self.lastGithubAccess < 1 {
-      Threading.sleep(seconds: 1)
-    }
-    self.lastGithubAccess = time(nil)
-    self.curlAccessLock.unlock()
   }
 
   /// This method creates and adds a comment to a Github issue through the API.
@@ -116,14 +111,19 @@ public class GithubAPI {
   ///   - url: The url of the issue as a String
   ///   - comment: The comment text
   func createComment(url: String, comment: String) {
-    let commentsURL = url + "/comments"
-    let bodyDict = ["body": comment]
-    do {
+
+    let performRequest = { () -> CURLResponse in
+      let commentsURL = url + "/comments"
+      let bodyDict = ["body": comment]
       let request = GithubCURLRequest(commentsURL, .postString(try bodyDict.jsonEncodedString()))
-      addAPIHeaders(to: request)
-      let response = try request.perform()
+      self.addAPIHeaders(to: request)
+      return try request.perform()
+    }
+
+    do {
+      var response = try performRequest()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
-        createComment(url: url, comment: comment)
+        response = try performRequest()
       }
       LogFile.info("request result for createComment: \(response.bodyString)")
     } catch {
@@ -139,12 +139,18 @@ public class GithubAPI {
   ///   - issueEdit: A dictionary where the keys are the items to edit in the issue, and the
   ///                values are what they should be edited to.
   func editIssue(url: String, issueEdit: [String: Any]) {
+
+    let performRequest = { () -> CURLResponse in
+      let request = GithubCURLRequest(url, .httpMethod(.patch),
+                                      .postString(try issueEdit.jsonEncodedString()))
+      self.addAPIHeaders(to: request)
+      return try request.perform()
+    }
+
     do {
-      let request = GithubCURLRequest(url, .httpMethod(.patch), .postString(try issueEdit.jsonEncodedString()))
-      addAPIHeaders(to: request)
-      let response = try request.perform()
+      var response = try performRequest()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
-        editIssue(url: url, issueEdit: issueEdit)
+        response = try performRequest()
       }
       LogFile.info("request result for editIssue: \(response.bodyString)")
     } catch {
@@ -155,19 +161,25 @@ public class GithubAPI {
 
   /// This method bulk updates all the existing Github issues to have labels through the API.
   func setLabelsForAllIssues() {
-    do {
-      guard let repoPath = ConfigManager.shared?.configDict["GITHUB_REPO_PATH"] as? String else {
-        LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
-        return
-      }
+
+    guard let repoPath = ConfigManager.shared?.configDict["GITHUB_REPO_PATH"] as? String else {
+      LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
+      return
+    }
+
+    let performRequest = { () -> CURLResponse in
       let relativePathForRepo = "/repos/" + repoPath
       let issuesURL = DefaultConfigParams.githubBaseURL + relativePathForRepo + "/issues"
       let params = "?state=all"
       let request = GithubCURLRequest(issuesURL + params)
-      addAPIHeaders(to: request)
-      let response = try request.perform()
+      self.addAPIHeaders(to: request)
+      return try request.perform()
+    }
+
+    do {
+      var response = try performRequest()
       if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
-        setLabelsForAllIssues()
+        response = try performRequest()
       }
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for issue in result {
@@ -204,15 +216,23 @@ public class GithubAPI {
   /// - Returns: an array of all the file names that are directories in the specific path.
   func getDirectoryContentPathNames(relativePath: String) -> [String] {
     var pathNames = [String]()
-    do {
-      guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
-        LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
-        return pathNames
-      }
+    guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
+      LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
+      return pathNames
+    }
+
+    let performRequest = { () -> CURLResponse in
       let contentsAPIPath = DefaultConfigParams.githubBaseURL + "/repos/" + repoPath + "/contents/" + relativePath
       let request = GithubCURLRequest(contentsAPIPath)
-      addAPIHeaders(to: request)
-      let response = try request.perform()
+      self.addAPIHeaders(to: request)
+      return try request.perform()
+    }
+
+    do {
+      var response = try performRequest()
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+        response = try performRequest()
+      }
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for path in result {
         if let type = path["type"] as? String,
@@ -220,9 +240,6 @@ public class GithubAPI {
           let pathName = path["name"] as? String {
           pathNames.append(pathName)
         }
-      }
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
-        return getDirectoryContentPathNames(relativePath: relativePath)
       }
       LogFile.info("request result for getDirectoryContentPaths: \(response.bodyString)")
     } catch {
@@ -246,9 +263,21 @@ extension GithubAPI {
   }
 
   func addAPIHeaders(to request: CURLRequest) {
+    APIOneSecondDelay()
     let headersDict = githubAPIHTTPHeaders()
     for (k,v) in headersDict {
       request.addHeader(HTTPRequestHeader.Name.fromStandard(name: k), value: v)
     }
+  }
+
+  /// The Github API allows to send a request once a second, so we need to delay the request if
+  /// a second hasn't passed yet.
+  func APIOneSecondDelay() {
+    self.curlAccessLock.lock()
+    if time(nil) - self.lastGithubAccess < 1 {
+      Threading.sleep(seconds: 1)
+    }
+    self.lastGithubAccess = time(nil)
+    self.curlAccessLock.unlock()
   }
 }
