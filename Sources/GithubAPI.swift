@@ -45,7 +45,7 @@ class GithubManager {
         LogFile.error("couldn't get an access token for installation: \(installation)")
         return nil
       }
-      let githubInstance = GithubAPI(accessToken: accessToken)
+      let githubInstance = GithubAPI(accessToken: accessToken, installationID: installation)
       githubInstances[accessToken] = githubInstance
       return githubInstance
     }
@@ -72,11 +72,13 @@ class GithubCURLRequest: CURLRequest {
 public class GithubAPI {
 
   var accessToken: String
+  var installationID: String
   let curlAccessLock = Threading.Lock()
   var lastGithubAccess = time(nil)
 
-  init(accessToken: String) {
+  init(accessToken: String, installationID: String) {
     self.accessToken = accessToken
+    self.installationID = installationID
   }
 
   /// This method adds labels to a Github issue through the API.
@@ -96,7 +98,7 @@ public class GithubAPI {
 
     do {
       var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
         response = try performRequest()
       }
       LogFile.info("request result for addLabels: \(response.bodyString)")
@@ -122,7 +124,7 @@ public class GithubAPI {
 
     do {
       var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
         response = try performRequest()
       }
       LogFile.info("request result for createComment: \(response.bodyString)")
@@ -149,7 +151,7 @@ public class GithubAPI {
 
     do {
       var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
         response = try performRequest()
       }
       LogFile.info("request result for editIssue: \(response.bodyString)")
@@ -178,7 +180,7 @@ public class GithubAPI {
 
     do {
       var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
         response = try performRequest()
       }
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
@@ -230,7 +232,7 @@ public class GithubAPI {
 
     do {
       var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response) {
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
         response = try performRequest()
       }
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]

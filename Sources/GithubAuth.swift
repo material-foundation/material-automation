@@ -47,24 +47,6 @@ public class GithubAuth {
     return token
   }
 
-  class func getFirstAppInstallationAccessTokenURL() -> String? {
-    do {
-      let request = CURLRequest(DefaultConfigParams.githubBaseURL + "/app/installations")
-      addAuthHeaders(to: request)
-      let json = try request.perform().bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
-      for installation in json {
-        if let account = installation["account"] as? [String: Any],
-          let url = account["url"] as? String,
-          url == DefaultConfigParams.githubBaseURL + "/users/material-components" {
-        return installation["access_tokens_url"] as? String
-        }
-      }
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
-    }
-    return nil
-  }
-
   class func getAccessToken(installationID: String) -> String? {
 
     guard let accessTokenURL = getInstallationAccessTokenURL(installationID: installationID) else {
@@ -74,7 +56,6 @@ public class GithubAuth {
 
     let accessToken = GithubAuth.createAccessToken(url: accessTokenURL)
     LogFile.debug("the access token is good: \(accessToken != nil && accessToken != "")")
-    UserDefaults.standard.set(accessToken, forKey: installationID)
     return accessToken
   }
 
@@ -119,11 +100,11 @@ public class GithubAuth {
     return headers
   }
 
-  class func refreshCredentialsIfUnauthorized(response: CURLResponse) -> Bool {
+  class func refreshCredentialsIfUnauthorized(response: CURLResponse, githubInstance: GithubAPI) -> Bool {
     LogFile.debug("trying to refresh Github credentials")
     for n in 0..<4 {
       if response.responseCode == 401 || response.responseCode == 403 {
-        if refreshGithubCredentials() {
+        if refreshGithubCredentials(githubInstance: githubInstance) {
           LogFile.debug("Refreshed Github credentials!")
           return true
         } else {
@@ -139,7 +120,7 @@ public class GithubAuth {
     return false
   }
 
-  class func refreshGithubCredentials() -> Bool {
+  class func refreshGithubCredentials(githubInstance: GithubAPI) -> Bool {
     GithubAuth.credentialsLock.lock()
     defer {
       GithubAuth.credentialsLock.unlock()
@@ -147,10 +128,13 @@ public class GithubAuth {
     do {
       _ = try GithubAuth.signAndEncodeJWT()
       LogFile.debug("the JWT token is good: \(GithubAuth.JWTToken != "")")
-      if let accessTokenURL = GithubAuth.getFirstAppInstallationAccessTokenURL() {
-        let accessToken = GithubAuth.createAccessToken(url: accessTokenURL)
-        LogFile.debug("the access token is good: \(accessToken != nil && accessToken != "")")
-        return accessToken != nil && accessToken != ""
+      if let accessToken = GithubAuth.getAccessToken(installationID: githubInstance.installationID) {
+        LogFile.debug("the access token is good: \(accessToken)")
+        githubInstance.accessToken = accessToken
+        return true
+      } else {
+        LogFile.error("Cannot Authenticate with Github for this installation: \(githubInstance.installationID)")
+        return false
       }
     } catch {
       LogFile.error("Cannot Authenticate with Github: \(error)")
