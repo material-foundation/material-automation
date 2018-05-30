@@ -86,7 +86,6 @@ public class GithubAuth {
 
     let accessToken = GithubAuth.createAccessToken(url: accessTokenURL)
     LogFile.debug("the access token is good: \(accessToken != nil && accessToken != "")")
-    UserDefaults.standard.set(accessToken, forKey: installationID)
     return accessToken
   }
 
