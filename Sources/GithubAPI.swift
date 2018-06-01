@@ -212,7 +212,6 @@ public class GithubAPI {
   /// - Returns: an array of all the file names that are directories in the specific path.
   func getDirectoryContentPathNames(relativePath: String, repoURL: String) -> [String] {
     var pathNames = [String]()
-
     let performRequest = { () -> CURLResponse in
       let contentsAPIPath = repoURL + "/contents/" + relativePath
       let request = GithubCURLRequest(contentsAPIPath)
