@@ -30,7 +30,6 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
 
   init(installation: [String: Any]?, action: String, PRData: [String: Any]?, issueData: [String: Any]?) {
     if let installation = installation {
-      LogFile.debug(installation.description)
       if let installationNum = installation["id"] as? Int {
         self.installationID = "\(installationNum)"
       }
@@ -45,7 +44,6 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
-    LogFile.debug("debugging this: \(values.description)")
     let installationDict: [String: Any]? =
       getJSONValue(named: "installation", from: values, defaultValue: nil)
     self.installationID = installationDict?["id"] as? String
