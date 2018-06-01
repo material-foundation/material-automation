@@ -145,7 +145,7 @@ public class GithubAPI {
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for issue in result {
-        guard let issueData = IssueData.createIssueData(from: issue) else {
+        guard let issueData = try issue.jsonEncodedString().jsonDecode() as? IssueData else {
           continue
         }
         var labelsToAdd = [String]()

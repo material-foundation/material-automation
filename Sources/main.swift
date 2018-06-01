@@ -150,6 +150,8 @@ server.addRoutes(routes)
 // Set a listen port of 8080
 server.serverPort = 8080
 
+GithubData.registerModels()
+
 do {
   // Launch the HTTP server.
   try server.start()
