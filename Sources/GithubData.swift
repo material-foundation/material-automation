@@ -44,7 +44,6 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
-    LogFile.debug("debugging this: \(values.description)")
     let installationDict: [String: Any]? =
       getJSONValue(named: "installation", from: values, defaultValue: nil)
     self.installationID = installationDict?["id"] as? String
