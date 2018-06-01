@@ -92,6 +92,7 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       return
   }
 
+  LogFile.debug(bodyString)
   guard let githubData = GithubData.createGithubData(from: bodyString),
   let installationID = githubData.installationID else {
     LogFile.error("couldn't parse incoming webhook request")

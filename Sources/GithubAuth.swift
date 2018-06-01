@@ -63,7 +63,9 @@ public class GithubAuth {
     do {
       let request = CURLRequest(DefaultConfigParams.githubBaseURL + "/app/installations/" + installationID)
       addAuthHeaders(to: request)
-      let json = try request.perform().bodyString.jsonDecode() as? [String: Any] ?? [:]
+      let test = try request.perform().bodyString
+      LogFile.debug(test)
+      let json = try test.jsonDecode() as? [String: Any] ?? [:]
       return json["access_tokens_url"] as? String
     } catch {
       LogFile.error("error: \(error) desc: \(error.localizedDescription)")
