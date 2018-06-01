@@ -124,7 +124,7 @@ class LabelAnalysis {
                                      issueEdit: ["title": updatedTitle])
             // notify of title change
             githubInstance.createComment(url: issueData.url,
-                                         comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedName).")
+                                         comment: "Your title label prefix has been renamed from \(titleLabel) to \(bracketedLabel).")
           }
         }
       }
@@ -191,8 +191,8 @@ class LabelAnalysis {
             }
             githubInstance.editIssue(url: PRData.issue_url, issueEdit: ["title": updatedTitle])
             // notify of title change
-            GithubAPI.createComment(url: PRData.issue_url,
-                                    comment: "Your title label prefix has been renamed from \(titleLabel) to \(lbl).")
+            githubInstance.createComment(url: PRData.issue_url,
+                                         comment: "Your title label prefix has been renamed from \(titleLabel) to \(lbl).")
           }
         }
       }

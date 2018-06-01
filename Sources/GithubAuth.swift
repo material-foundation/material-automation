@@ -131,19 +131,12 @@ public class GithubAuth {
     defer {
       GithubAuth.credentialsLock.unlock()
     }
-    do {
-      if let accessToken = GithubAuth.getAccessToken(installationID: githubInstance.installationID) {
-        LogFile.debug("the access token is good: \(accessToken)")
-        githubInstance.accessToken = accessToken
-        return true
-      } else {
-        LogFile.error("Cannot Authenticate with Github for this installation: \(githubInstance.installationID)")
-        return false
-      }
-    } catch {
-      LogFile.error("Cannot Authenticate with Github: \(error)")
+    if let accessToken = GithubAuth.getAccessToken(installationID: githubInstance.installationID) {
+      LogFile.debug("the access token is good: \(accessToken)")
+      githubInstance.accessToken = accessToken
+      return true
     }
-
+    LogFile.error("Cannot Authenticate with Github for this installation: \(githubInstance.installationID)")
     return false
   }
 
