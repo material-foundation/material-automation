@@ -48,8 +48,22 @@ routes.add(method: .post, uri: "/labels/updateall", handler: { request, response
   LogFile.info("/labels/updateall")
 
   guard let password = request.header(.authorization),
-    GithubAuth.verifyGooglerPassword(googlerPassword: password),
-    let installationID = request.postBodyString else {
+    GithubAuth.verifyGooglerPassword(googlerPassword: password) else {
+      response.completed(status: .unauthorized)
+      return
+  }
+
+  var json: [String: Any]
+  do {
+    json = try request.postBodyString?.jsonDecode() as? [String: Any] ?? [String: Any]()
+  } catch {
+    response.completed(status: .unauthorized)
+    return
+  }
+
+  guard let installationID = json["installation"] as? String,
+    let repoURL = json["repository_url"] as? String else {
+      LogFile.error("The incoming request is missing information: \(json.description)")
       response.completed(status: .unauthorized)
       return
   }
