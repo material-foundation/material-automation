@@ -131,6 +131,11 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData,
                                                      githubAPI: githubAPI)
     }
+  } else if githubData.projectCard != nil {
+    if githubData.action == "moved" {
+      ProjectAnalysis.movedCard(githubData: githubData,
+                                githubInstance: githubAPI)
+    }
   }
 
   var ret = ""

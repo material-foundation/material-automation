@@ -193,6 +193,28 @@ public class GithubAPI {
     return pathNames
   }
 
+  func getProjectColumnName(columnID: Int) -> String? {
+    let performRequest = { () -> CURLResponse in
+      let columnsAPIPath = DefaultConfigParams.githubBaseURL + "/columns/\(columnID)"
+      let request = GithubCURLRequest(columnsAPIPath)
+      self.addAPIHeaders(to: request)
+      return try request.perform()
+    }
+
+    do {
+      var response = try performRequest()
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
+        response = try performRequest()
+      }
+      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
+      LogFile.info("request result for getProjectColumnName: \(response.bodyString)")
+      return result["name"] as? String
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
+    return nil
+  }
+
 }
 
 // API Headers
