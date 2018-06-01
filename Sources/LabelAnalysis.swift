@@ -86,7 +86,8 @@ class LabelAnalysis {
   ///
   /// - Parameter issueData: The incoming issue data
   class func addAndFixLabelsForIssues(issueData: IssueData, githubInstance: GithubAPI) {
-    let componentNames = githubInstance.getDirectoryContentPathNames(relativePath: "components")
+    let componentNames = githubInstance.getDirectoryContentPathNames(relativePath: "components",
+                                                                     repoURL: issueData.repo_url)
     var labelsToAdd = [String]()
     let titleLabel = getTitleLabel(title: issueData.title)
     if let titleLabel = titleLabel {

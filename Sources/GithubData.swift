@@ -159,6 +159,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
   var body: String = ""
   var labels: [String] = [String]()
   var url: String = ""
+  var repo_url: String = ""
+
   public var description: String {
     return "IssueData: id:\(id), title:\(title), body:\(body), state:\(state)"
   }
@@ -169,7 +171,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
        title: String,
        body: String,
        labels: [String],
-       url: String) {
+       url: String,
+       repo_url: String) {
     self.id = id
     self.html_url = html_url
     self.state = state
@@ -177,6 +180,7 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
     self.body = body
     self.labels = labels
     self.url = url
+    self.repo_url = repo_url
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -187,6 +191,7 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
     self.body = getJSONValue(named: "body", from: values, defaultValue: "")
     self.labels = getJSONValue(named: "labels", from: values, defaultValue: [String]())
     self.url = getJSONValue(named: "url", from: values, defaultValue: "")
+    self.repo_url = getJSONValue(named: "repo_url", from: values, defaultValue: "")
   }
 
   public override func getJSONValues() -> [String : Any] {
@@ -197,7 +202,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
        "title": title,
        "body": body,
        "labels": labels,
-       "url": url
+       "url": url,
+       "repo_url": repo_url
     ]
   }
 
@@ -208,7 +214,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
                      title: dict["title"] as? String ?? "",
                      body: dict["body"] as? String ?? "",
                      labels: dict["labels"] as? [String] ?? [String](),
-                     url: dict["url"] as? String ?? "")
+                     url: dict["url"] as? String ?? "",
+                     repo_url: dict["repo_url"] as? String ?? "")
   }
 
 }

@@ -162,16 +162,10 @@ public class GithubAPI {
 
 
   /// This method bulk updates all the existing Github issues to have labels through the API.
-  func setLabelsForAllIssues() {
-
-    guard let repoPath = ConfigManager.shared?.configDict["GITHUB_REPO_PATH"] as? String else {
-      LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
-      return
-    }
+  func setLabelsForAllIssues(repoURL: String) {
 
     let performRequest = { () -> CURLResponse in
-      let relativePathForRepo = "/repos/" + repoPath
-      let issuesURL = DefaultConfigParams.githubBaseURL + relativePathForRepo + "/issues"
+      let issuesURL = repoURL + "/issues"
       let params = "?state=all"
       let request = GithubCURLRequest(issuesURL + params)
       self.addAPIHeaders(to: request)
@@ -216,15 +210,11 @@ public class GithubAPI {
   ///
   /// - Parameter relativePath: The relative path inside the repository source code
   /// - Returns: an array of all the file names that are directories in the specific path.
-  func getDirectoryContentPathNames(relativePath: String) -> [String] {
+  func getDirectoryContentPathNames(relativePath: String, repoURL: String) -> [String] {
     var pathNames = [String]()
-    guard let repoPath = ProcessInfo.processInfo.environment["GITHUB_REPO_PATH"] else {
-      LogFile.error("You have not defined a GITHUB_REPO_PATH pointing to your repo in your app.yaml file")
-      return pathNames
-    }
 
     let performRequest = { () -> CURLResponse in
-      let contentsAPIPath = DefaultConfigParams.githubBaseURL + "/repos/" + repoPath + "/contents/" + relativePath
+      let contentsAPIPath = repoURL + "/contents/" + relativePath
       let request = GithubCURLRequest(contentsAPIPath)
       self.addAPIHeaders(to: request)
       return try request.perform()
