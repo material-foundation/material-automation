@@ -30,7 +30,7 @@ public class GithubAuth {
     guard let githubAppIDStr = ConfigManager.shared?.configDict["GITHUB_APP_ID"] as? String,
       let pemFileName = ConfigManager.shared?.configDict["PEM_FILE_NAME"] as? String,
       let githubAppID = Int(githubAppIDStr) else {
-      LogFile.error("You have not defined GITHUB_APP_ID in your app.yaml file")
+      LogFile.error("You have not defined GITHUB_APP_ID or PEM_FILE_NAME in your app.yaml file")
       return ""
     }
     let fileDirectory = DefaultConfigParams.projectPath
@@ -48,6 +48,12 @@ public class GithubAuth {
   }
 
   class func getAccessToken(installationID: String) -> String? {
+    do {
+      _ = try GithubAuth.signAndEncodeJWT()
+      LogFile.debug("the JWT token is good: \(GithubAuth.JWTToken != "")")
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
 
     guard let accessTokenURL = getInstallationAccessTokenURL(installationID: installationID) else {
       LogFile.error("Could not retrieve the access token URL for the installation ID: \(installationID)")
@@ -128,8 +134,6 @@ public class GithubAuth {
       GithubAuth.credentialsLock.unlock()
     }
     do {
-      _ = try GithubAuth.signAndEncodeJWT()
-      LogFile.debug("the JWT token is good: \(GithubAuth.JWTToken != "")")
       if let accessToken = GithubAuth.getAccessToken(installationID: githubInstance.installationID) {
         LogFile.debug("the access token is good: \(accessToken)")
         githubInstance.accessToken = accessToken

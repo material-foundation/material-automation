@@ -4,15 +4,11 @@
 <dict>
 	<key>CLOUD_STORAGE_BUCKET</key>
 	<string>material-automation.appspot.com</string>
-	<key>GITHUB_REPO_PATH</key>
-	<string>material-components/material-components-ios</string>
 	<key>GITHUB_APP_ID</key>
-	<string>10819</string>
+	<string>11993</string>
 	<key>PEM_FILE_NAME</key>
-	<string>githubKey.pem</string>
+	<string>GithubKeyDebug.pem</string>
 	<key>USER_AGENT</key>
 	<string>Material Automation</string>
-	<key>PRODUCTION_PATH</key>
-	<string>/root/MaterialAutomation/</string>
 </dict>
 </plist>
