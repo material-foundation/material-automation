@@ -41,9 +41,14 @@ class ProjectAnalysis {
       githubInstance.editIssue(url: contentURL, issueEdit: ["assignees": [sender]])
     }
 
-    if toColumnName == "Done" { // &&  //get issue data from content_url to see if issue and is still open
+    if toColumnName == "Done" {
       //close issue
       githubInstance.editIssue(url: contentURL, issueEdit: ["state": "closed"])
+    }
+
+    if fromColumnName == "Done" && (toColumnName == "Backlog" || toColumnName == "In progress") {
+      //reopen issue
+      githubInstance.editIssue(url: contentURL, issueEdit: ["state": "open"])
     }
   }
 
