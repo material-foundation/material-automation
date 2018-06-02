@@ -24,30 +24,30 @@ import PerfectThread
 class GithubManager {
   static let shared = GithubManager()
 
-  let githubInstancesLock = Threading.RWLock()
-  private var githubInstances = [String: GithubAPI]()
+  let githubManagerLock = Threading.RWLock()
+  private var githubAPIs = [String: GithubAPI]()
 
-  private func getCachedGithubInstance(for installation: String) -> GithubAPI? {
+  private func getCachedGithubAPI(for installation: String) -> GithubAPI? {
     var value: GithubAPI?
-    githubInstancesLock.doWithReadLock {
-      value = githubInstances[installation]
+    githubManagerLock.doWithReadLock {
+      value = githubAPIs[installation]
     }
     return value
   }
 
-  func getGithubInstance(for installation: String) -> GithubAPI? {
-    if let githubInstanceCached = getCachedGithubInstance(for: installation) {
-      return githubInstanceCached
+  func getGithubAPI(for installation: String) -> GithubAPI? {
+    if let githubAPICached = getCachedGithubAPI(for: installation) {
+      return githubAPICached
     }
 
-    return githubInstancesLock.doWithWriteLock { () -> GithubAPI? in
+    return githubManagerLock.doWithWriteLock { () -> GithubAPI? in
       guard let accessToken = GithubAuth.getAccessToken(installationID: installation) else {
         LogFile.error("couldn't get an access token for installation: \(installation)")
         return nil
       }
-      let githubInstance = GithubAPI(accessToken: accessToken, installationID: installation)
-      githubInstances[accessToken] = githubInstance
-      return githubInstance
+      let githubAPI = GithubAPI(accessToken: accessToken, installationID: installation)
+      githubAPIs[accessToken] = githubAPI
+      return githubAPI
     }
   }
 }
@@ -95,16 +95,7 @@ public class GithubAPI {
       self.addAPIHeaders(to: request)
       return try request.perform()
     }
-
-    do {
-      var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
-        response = try performRequest()
-      }
-      LogFile.info("request result for addLabels: \(response.bodyString)")
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
-    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
   }
 
   /// This method creates and adds a comment to a Github issue through the API.
@@ -121,18 +112,8 @@ public class GithubAPI {
       self.addAPIHeaders(to: request)
       return try request.perform()
     }
-
-    do {
-      var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
-        response = try performRequest()
-      }
-      LogFile.info("request result for createComment: \(response.bodyString)")
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
-    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
   }
-
 
   /// This method edits an existing Github issue through the API.
   ///
@@ -148,18 +129,8 @@ public class GithubAPI {
       self.addAPIHeaders(to: request)
       return try request.perform()
     }
-
-    do {
-      var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
-        response = try performRequest()
-      }
-      LogFile.info("request result for editIssue: \(response.bodyString)")
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
-    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
   }
-
 
   /// This method bulk updates all the existing Github issues to have labels through the API.
   func setLabelsForAllIssues(repoURL: String) {
@@ -171,12 +142,7 @@ public class GithubAPI {
       self.addAPIHeaders(to: request)
       return try request.perform()
     }
-
-    do {
-      var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
-        response = try performRequest()
-      }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for issue in result {
         guard let issueData = IssueData.createIssueData(from: issue) else {
@@ -194,15 +160,11 @@ public class GithubAPI {
           }
         }
         if (labelsToAdd.count > 0) {
-          addLabelsToIssue(url: issueData.url, labels: Array(Set(labelsToAdd)))
+          self.addLabelsToIssue(url: issueData.url, labels: Array(Set(labelsToAdd)))
         }
       }
-      LogFile.info("request result for setLabelsForAllIssues: \(result)")
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
     }
   }
-
 
   /// This method receives a relative path inside the repository source code and receives from the Github API
   /// a JSON containing an array of dictionaries showing the files info in that directory. We
@@ -218,12 +180,7 @@ public class GithubAPI {
       self.addAPIHeaders(to: request)
       return try request.perform()
     }
-
-    do {
-      var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
-        response = try performRequest()
-      }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for path in result {
         if let type = path["type"] as? String,
@@ -232,9 +189,6 @@ public class GithubAPI {
           pathNames.append(pathName)
         }
       }
-      LogFile.info("request result for getDirectoryContentPaths: \(response.bodyString)")
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
     }
     return pathNames
   }
@@ -270,5 +224,20 @@ extension GithubAPI {
     }
     self.lastGithubAccess = time(nil)
     self.curlAccessLock.unlock()
+  }
+
+  func githubRequestTemplate(requestFlow: () throws -> CURLResponse,
+                             methodName: String,
+                             resultFlow: ((_ response: CURLResponse) throws -> ())?) {
+    do {
+      var response = try requestFlow()
+      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubAPI: self) {
+        response = try requestFlow()
+      }
+      try resultFlow?(response)
+      LogFile.info("request result for \(methodName): \(response.bodyString)")
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
   }
 }

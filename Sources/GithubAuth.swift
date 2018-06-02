@@ -106,11 +106,11 @@ public class GithubAuth {
     return headers
   }
 
-  class func refreshCredentialsIfUnauthorized(response: CURLResponse, githubInstance: GithubAPI) -> Bool {
+  class func refreshCredentialsIfUnauthorized(response: CURLResponse, githubAPI: GithubAPI) -> Bool {
     LogFile.debug("trying to refresh Github credentials")
     for n in 0..<4 {
       if response.responseCode == 401 || response.responseCode == 403 {
-        if refreshGithubCredentials(githubInstance: githubInstance) {
+        if refreshGithubCredentials(githubAPI: githubAPI) {
           LogFile.debug("Refreshed Github credentials!")
           return true
         } else {
@@ -126,17 +126,17 @@ public class GithubAuth {
     return false
   }
 
-  class func refreshGithubCredentials(githubInstance: GithubAPI) -> Bool {
+  class func refreshGithubCredentials(githubAPI: GithubAPI) -> Bool {
     GithubAuth.credentialsLock.lock()
     defer {
       GithubAuth.credentialsLock.unlock()
     }
-    if let accessToken = GithubAuth.getAccessToken(installationID: githubInstance.installationID) {
+    if let accessToken = GithubAuth.getAccessToken(installationID: githubAPI.installationID) {
       LogFile.debug("the access token is good: \(accessToken)")
-      githubInstance.accessToken = accessToken
+      githubAPI.accessToken = accessToken
       return true
     }
-    LogFile.error("Cannot Authenticate with Github for this installation: \(githubInstance.installationID)")
+    LogFile.error("Cannot Authenticate with Github for this installation: \(githubAPI.installationID)")
     return false
   }
 

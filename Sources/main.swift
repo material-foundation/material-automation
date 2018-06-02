@@ -68,7 +68,7 @@ routes.add(method: .post, uri: "/labels/updateall", handler: { request, response
       return
   }
 
-  guard let githubAPI = GithubManager.shared.getGithubInstance(for: installationID) else {
+  guard let githubAPI = GithubManager.shared.getGithubAPI(for: installationID) else {
     LogFile.error("could not get a github instance with an access token for \(installationID)")
     response.completed(status: .unauthorized)
     return
@@ -99,7 +99,7 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
     return
   }
 
-  guard let githubAPI = GithubManager.shared.getGithubInstance(for: installationID) else {
+  guard let githubAPI = GithubManager.shared.getGithubAPI(for: installationID) else {
     LogFile.error("could not get a github instance with an access token for \(installationID)")
     response.completed(status: .unauthorized)
     return
@@ -108,14 +108,14 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
   if let PRData = githubData.PRData {
     if githubData.action == "synchronize" || githubData.action == "opened" {
       LabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData,
-                                                   githubInstance: githubAPI)
+                                                   githubAPI: githubAPI)
     }
   } else if let issueData = githubData.issueData {
     if githubData.action == "synchronize" || githubData.action == "opened" {
       LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData,
-                                             githubInstance: githubAPI)
+                                             githubAPI: githubAPI)
       LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData,
-                                                     githubInstance: githubAPI)
+                                                     githubAPI: githubAPI)
     }
   }
 
