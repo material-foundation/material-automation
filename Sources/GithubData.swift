@@ -198,22 +198,22 @@ public class Changes: JSONConvertibleObject, CustomStringConvertible {
 public class ProjectCard: JSONConvertibleObject, CustomStringConvertible {
   static let registerName = "projectCard"
 
-  var content_url: String = ""
+  var content_url: String?
   var column_id: Int = -1
 
   public var description: String {
-    return "ProjectCard: content_url:\(content_url), column_id:\(column_id)"
+    return "ProjectCard: content_url:\(content_url ?? ""), column_id:\(column_id)"
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
-    self.content_url = getJSONValue(named: "content_url", from: values, defaultValue: "")
+    self.content_url = getJSONValue(named: "content_url", from: values, defaultValue: nil)
     self.column_id = getJSONValue(named: "column_id", from: values, defaultValue: -1)
   }
 
   public override func getJSONValues() -> [String : Any] {
     return
       [JSONDecoding.objectIdentifierKey:ProjectCard.registerName,
-       "content_url": content_url,
+       "content_url": content_url as Any,
        "column_id": column_id
     ]
   }

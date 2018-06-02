@@ -31,12 +31,19 @@ class ProjectAnalysis {
         return
     }
 
-    if fromColumnName == "Backlog" && (toColumnName == "In progress" || toColumnName == "Done") {
+    guard let contentURL = githubData.projectCard?.content_url else {
+      LogFile.info("The moved card isn't an issue, won't do any action to it.")
+      return
+    }
+    if let sender = githubData.sender,
+      fromColumnName == "Backlog" && (toColumnName == "In progress" || toColumnName == "Done") {
       //assign issue to user
+      githubInstance.editIssue(url: contentURL, issueEdit: ["assignees": [sender]])
     }
 
     if toColumnName == "Done" { // &&  //get issue data from content_url to see if issue and is still open
       //close issue
+      githubInstance.editIssue(url: contentURL, issueEdit: ["state": "closed"])
     }
   }
 
