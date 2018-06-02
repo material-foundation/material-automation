@@ -30,7 +30,8 @@ EXPOSE 8080
 RUN mkdir /root/MaterialAutomation
 ADD Package.swift /root/MaterialAutomation
 ADD Sources /root/MaterialAutomation/Sources
-ADD material-ci-app.2018-05-09.private-key.pem /root/MaterialAutomation
+ADD GithubKey.pem /root/MaterialAutomation
+ADD Config.plist /root/MaterialAutomation
 
 # Build the app
 RUN cd /root/MaterialAutomation && ls -la && cd Sources && ls -la

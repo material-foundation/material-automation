@@ -23,21 +23,17 @@ import PerfectLogger
 import PerfectThread
 
 public class GithubAuth {
-  static let productionPath = "/root/MaterialAutomation/"
-  static let localPath = Dir.workingDir.path
   static var JWTToken = ""
-  static var accessToken = ""
   static let credentialsLock = Threading.Lock()
-  static let pemFileName = "material-ci-app.2018-05-09.private-key.pem"
-  static let githubBaseURL = "https://api.github.com"
 
   class func signAndEncodeJWT() throws -> String {
-    guard let githubAppIDStr = ProcessInfo.processInfo.environment["GITHUB_APP_ID"],
+    guard let githubAppIDStr = ConfigManager.shared?.configDict["GITHUB_APP_ID"] as? String,
+      let pemFileName = ConfigManager.shared?.configDict["PEM_FILE_NAME"] as? String,
       let githubAppID = Int(githubAppIDStr) else {
-      LogFile.error("You have not defined GITHUB_APP_ID in your app.yaml file")
+      LogFile.error("You have not defined GITHUB_APP_ID or PEM_FILE_NAME in your app.yaml file")
       return ""
     }
-    let fileDirectory = productionPath
+    let fileDirectory = DefaultConfigParams.projectPath
     LogFile.debug(fileDirectory)
     let PEMPath = fileDirectory + pemFileName
     let key = try PEMKey(pemPath: PEMPath)
@@ -51,18 +47,30 @@ public class GithubAuth {
     return token
   }
 
-  class func getFirstAppInstallationAccessTokenURL() -> String? {
+  class func getAccessToken(installationID: String) -> String? {
     do {
-      let request = CURLRequest("https://api.github.com/app/installations")
+      _ = try GithubAuth.signAndEncodeJWT()
+      LogFile.debug("the JWT token is good: \(GithubAuth.JWTToken != "")")
+    } catch {
+      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+    }
+
+    guard let accessTokenURL = getInstallationAccessTokenURL(installationID: installationID) else {
+      LogFile.error("Could not retrieve the access token URL for the installation ID: \(installationID)")
+      return nil
+    }
+
+    let accessToken = GithubAuth.createAccessToken(url: accessTokenURL)
+    LogFile.debug("the access token is good: \(accessToken != nil && accessToken != "")")
+    return accessToken
+  }
+
+  class func getInstallationAccessTokenURL(installationID: String) -> String? {
+    do {
+      let request = CURLRequest(DefaultConfigParams.githubBaseURL + "/app/installations/" + installationID)
       addAuthHeaders(to: request)
-      let json = try request.perform().bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
-      for installation in json {
-        if let account = installation["account"] as? [String: Any],
-          let url = account["url"] as? String,
-          url == githubBaseURL + "/users/material-components" {
-        return installation["access_tokens_url"] as? String
-        }
-      }
+      let json = try request.perform().bodyString.jsonDecode() as? [String: Any] ?? [:]
+      return json["access_tokens_url"] as? String
     } catch {
       LogFile.error("error: \(error) desc: \(error.localizedDescription)")
     }
@@ -75,7 +83,6 @@ public class GithubAuth {
       addAuthHeaders(to: request)
       let json = try request.perform().bodyJSON
       let token = json["token"] as? String ?? ""
-      accessToken = token
       return token
     } catch {
       LogFile.error("error: \(error) desc: \(error.localizedDescription)")
@@ -91,18 +98,19 @@ public class GithubAuth {
   }
 
   class func githubAuthHTTPHeaders() -> [String: String] {
+    let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
     headers["Authorization"] = "Bearer \(JWTToken)"
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = "Material Automation"
+    headers["User-Agent"] = userAgent
     return headers
   }
 
-  class func refreshCredentialsIfUnauthorized(response: CURLResponse) -> Bool {
+  class func refreshCredentialsIfUnauthorized(response: CURLResponse, githubAPI: GithubAPI) -> Bool {
     LogFile.debug("trying to refresh Github credentials")
     for n in 0..<4 {
       if response.responseCode == 401 || response.responseCode == 403 {
-        if refreshGithubCredentials() {
+        if refreshGithubCredentials(githubAPI: githubAPI) {
           LogFile.debug("Refreshed Github credentials!")
           return true
         } else {
@@ -118,23 +126,17 @@ public class GithubAuth {
     return false
   }
 
-  class func refreshGithubCredentials() -> Bool {
+  class func refreshGithubCredentials(githubAPI: GithubAPI) -> Bool {
     GithubAuth.credentialsLock.lock()
     defer {
       GithubAuth.credentialsLock.unlock()
     }
-    do {
-      _ = try GithubAuth.signAndEncodeJWT()
-      LogFile.debug("the JWT token is good: \(GithubAuth.JWTToken != "")")
-      if let accessTokenURL = GithubAuth.getFirstAppInstallationAccessTokenURL() {
-        let accessToken = GithubAuth.createAccessToken(url: accessTokenURL)
-        LogFile.debug("the access token is good: \(accessToken != nil && accessToken != "")")
-        return accessToken != nil && accessToken != ""
-      }
-    } catch {
-      LogFile.error("Cannot Authenticate with Github: \(error)")
+    if let accessToken = GithubAuth.getAccessToken(installationID: githubAPI.installationID) {
+      LogFile.debug("the access token is good: \(accessToken)")
+      githubAPI.accessToken = accessToken
+      return true
     }
-
+    LogFile.error("Cannot Authenticate with Github for this installation: \(githubAPI.installationID)")
     return false
   }
 

@@ -20,14 +20,20 @@ import PerfectLogger
 public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   static let registerName = "githubData"
 
+  var installationID: String?
   var action: String = ""
   var PRData: PullRequestData?
   var issueData: IssueData?
   public var description: String {
-    return "GithubData: \(action), \(PRData?.description ?? "No PR Data"), \(issueData?.description ?? "No Issue Data")"
+    return "GithubData: \(action), Installation ID: \(installationID ?? "No Installation ID"), \(PRData?.description ?? "No PR Data"), \(issueData?.description ?? "No Issue Data")"
   }
 
-  init(action: String, PRData: [String: Any]?, issueData: [String: Any]?) {
+  init(installation: [String: Any]?, action: String, PRData: [String: Any]?, issueData: [String: Any]?) {
+    if let installation = installation {
+      if let installationNum = installation["id"] as? Int {
+        self.installationID = "\(installationNum)"
+      }
+    }
     self.action = action
     if let PRData = PRData {
       self.PRData = PullRequestData.createPRData(from: PRData)
@@ -38,13 +44,17 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
+    let installationDict: [String: Any]? =
+      getJSONValue(named: "installation", from: values, defaultValue: nil)
+    self.installationID = installationDict?["id"] as? String
     self.action = getJSONValue(named: "action", from: values, defaultValue: "")
     self.PRData = getJSONValue(named: "pull_request", from: values, defaultValue: nil)
     self.issueData = getJSONValue(named: "issue", from: values, defaultValue: nil)
   }
 
   public override func getJSONValues() -> [String : Any] {
-    return ["action": action,
+    return ["installationID": installationID as Any,
+            "action": action,
             "pull_request": PRData as Any,
             "issue": issueData as Any]
   }
@@ -54,7 +64,8 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
       guard let incoming = try json.jsonDecode() as? [String: Any] else {
         return nil
       }
-      return GithubData(action: incoming["action"] as? String ?? "",
+      return GithubData(installation: incoming["installation"] as? [String: Any] ?? nil,
+                        action: incoming["action"] as? String ?? "",
                         PRData: incoming["pull_request"] as? [String: Any] ?? nil,
                         issueData: incoming["issue"] as? [String: Any] ?? nil)
     } catch {
@@ -150,6 +161,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
   var body: String = ""
   var labels: [String] = [String]()
   var url: String = ""
+  var repository_url: String = ""
+
   public var description: String {
     return "IssueData: id:\(id), title:\(title), body:\(body), state:\(state)"
   }
@@ -160,7 +173,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
        title: String,
        body: String,
        labels: [String],
-       url: String) {
+       url: String,
+       repository_url: String) {
     self.id = id
     self.html_url = html_url
     self.state = state
@@ -168,6 +182,7 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
     self.body = body
     self.labels = labels
     self.url = url
+    self.repository_url = repository_url
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -178,6 +193,7 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
     self.body = getJSONValue(named: "body", from: values, defaultValue: "")
     self.labels = getJSONValue(named: "labels", from: values, defaultValue: [String]())
     self.url = getJSONValue(named: "url", from: values, defaultValue: "")
+    self.repository_url = getJSONValue(named: "repository_url", from: values, defaultValue: "")
   }
 
   public override func getJSONValues() -> [String : Any] {
@@ -188,7 +204,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
        "title": title,
        "body": body,
        "labels": labels,
-       "url": url
+       "url": url,
+       "repository_url": repository_url
     ]
   }
 
@@ -199,7 +216,8 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
                      title: dict["title"] as? String ?? "",
                      body: dict["body"] as? String ?? "",
                      labels: dict["labels"] as? [String] ?? [String](),
-                     url: dict["url"] as? String ?? "")
+                     url: dict["url"] as? String ?? "",
+                     repository_url: dict["repository_url"] as? String ?? "")
   }
 
 }

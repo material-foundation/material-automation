@@ -40,7 +40,7 @@ routes.add(method: .get, uri: "/_ah/health", handler: { request, response in
 // Basic GET request
 routes.add(method: .get, uri: "/hello", handler: { request, response in
   LogFile.info("GET - /hello route handler...")
-  response.setBody(string: "Hello from Swift on Google App Engine flexible environment!")
+  response.setBody(string: DefaultConfigParams.helloMessage)
   response.completed()
 })
 
@@ -52,8 +52,30 @@ routes.add(method: .post, uri: "/labels/updateall", handler: { request, response
       response.completed(status: .unauthorized)
       return
   }
+
+  var json: [String: Any]
+  do {
+    json = try request.postBodyString?.jsonDecode() as? [String: Any] ?? [String: Any]()
+  } catch {
+    response.completed(status: .unauthorized)
+    return
+  }
+
+  guard let installationID = json["installation"] as? String,
+    let repoURL = json["repository_url"] as? String else {
+      LogFile.error("The incoming request is missing information: \(json.description)")
+      response.completed(status: .unauthorized)
+      return
+  }
+
+  guard let githubAPI = GithubManager.shared.getGithubAPI(for: installationID) else {
+    LogFile.error("could not get a github instance with an access token for \(installationID)")
+    response.completed(status: .unauthorized)
+    return
+  }
+
   Threading.getDefaultQueue().dispatch {
-    GithubAPI.setLabelsForAllIssues()
+    githubAPI.setLabelsForAllIssues(repoURL: repoURL)
   }
   response.completed()
 })
@@ -69,16 +91,31 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       response.completed(status: .unauthorized)
       return
   }
-  let githubData = GithubData.createGithubData(from: request.postBodyString!)
 
-  if let PRData = githubData?.PRData {
-    if githubData?.action == "synchronize" || githubData?.action == "opened" {
-      LabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData)
+  guard let githubData = GithubData.createGithubData(from: bodyString),
+  let installationID = githubData.installationID else {
+    LogFile.error("couldn't parse incoming webhook request")
+    response.completed(status: .ok)
+    return
+  }
+
+  guard let githubAPI = GithubManager.shared.getGithubAPI(for: installationID) else {
+    LogFile.error("could not get a github instance with an access token for \(installationID)")
+    response.completed(status: .unauthorized)
+    return
+  }
+
+  if let PRData = githubData.PRData {
+    if githubData.action == "synchronize" || githubData.action == "opened" {
+      LabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData,
+                                                   githubAPI: githubAPI)
     }
-  } else if let issueData = githubData?.issueData {
-    if githubData?.action == "synchronize" || githubData?.action == "opened" {
-      LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData)
-      LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData)
+  } else if let issueData = githubData.issueData {
+    if githubData.action == "synchronize" || githubData.action == "opened" {
+      LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData,
+                                             githubAPI: githubAPI)
+      LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData,
+                                                     githubAPI: githubAPI)
     }
   }
 
@@ -98,9 +135,6 @@ server.addRoutes(routes)
 
 // Set a listen port of 8080
 server.serverPort = 8080
-
-// Set up github credentials
-_ = GithubAuth.refreshGithubCredentials()
 
 do {
   // Launch the HTTP server.
