@@ -27,6 +27,10 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   var changes: Changes?
   var projectCard: ProjectCard?
   var sender: String?
+  public var description: String {
+    return "GithubData: \(action), Installation ID: \(installationID ?? "No Installation ID")," +
+    "\(PRData?.description ?? "No PR Data"), \(issueData?.description ?? "No Issue Data")"
+  }
 
   static func registerModels() {
     JSONDecoding.registerJSONDecodable(name: GithubData.registerName,
@@ -41,9 +45,38 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
                                        creator: { return ProjectCard() })
   }
 
-  public var description: String {
-    return "GithubData: \(action), Installation ID: \(installationID ?? "No Installation ID")," +
-      "\(PRData?.description ?? "No PR Data"), \(issueData?.description ?? "No Issue Data")"
+  public override init() {
+    super.init()
+  }
+
+  init(installation: [String: Any]?,
+       action: String,
+       PRData: [String: Any]?,
+       issueData: [String: Any]?,
+       changes: [String: Any]?,
+       projectCard: [String: Any]?,
+       sender: [String: Any]?) {
+    if let installation = installation {
+      if let installationNum = installation["id"] as? Int {
+        self.installationID = "\(installationNum)"
+      }
+    }
+    self.action = action
+    if let PRData = PRData {
+      self.PRData = PullRequestData.createPRData(from: PRData)
+    }
+    if let issueData = issueData {
+      self.issueData = IssueData.createIssueData(from: issueData)
+    }
+    if let changes = changes {
+      self.changes = Changes.createChanges(from: changes)
+    }
+    if let projectCard = projectCard {
+      self.projectCard = ProjectCard.createProjectCard(from: projectCard)
+    }
+    if let sender = sender {
+      self.sender = sender["login"] as? String
+    }
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -72,10 +105,16 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
 
   class func createGithubData(from json: String) -> GithubData? {
     do {
-      guard let githubData = try json.jsonDecode() as? GithubData else {
+      guard let incoming = try json.jsonDecode() as? [String: Any] else {
         return nil
       }
-      return githubData
+      return GithubData(installation: incoming["installation"] as? [String: Any],
+                        action: incoming["action"] as? String ?? "",
+                        PRData: incoming["pull_request"] as? [String: Any],
+                        issueData: incoming["issue"] as? [String: Any],
+                        changes: incoming["changes"] as? [String: Any],
+                        projectCard: incoming["project_card"] as? [String: Any],
+                        sender: incoming["sender"] as? [String: Any])
     } catch {
       return nil
     }
@@ -97,6 +136,30 @@ public class PullRequestData: JSONConvertibleObject, CustomStringConvertible {
   var issue_url: String = ""
   public var description: String {
     return "PullRequestData: id:\(id), title:\(title), body:\(body), state:\(state), diff_url:\(diff_url)"
+  }
+
+  public override init() {
+    super.init()
+  }
+
+  init(id: Int,
+       html_url: String,
+       diff_url: String,
+       state: String,
+       title: String,
+       body: String,
+       labels: [String],
+       url: String,
+       issue_url: String) {
+    self.id = id
+    self.html_url = html_url
+    self.diff_url = diff_url
+    self.state = state
+    self.title = title
+    self.body = body
+    self.labels = labels
+    self.url = url
+    self.issue_url = issue_url
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -126,6 +189,18 @@ public class PullRequestData: JSONConvertibleObject, CustomStringConvertible {
     ]
   }
 
+  class func createPRData(from dict: [String: Any]) -> PullRequestData? {
+    return PullRequestData(id: dict["id"] as? Int ?? -1,
+                           html_url: dict["html_url"] as? String ?? "",
+                           diff_url: dict["diff_url"] as? String ?? "",
+                           state: dict["state"] as? String ?? "",
+                           title: dict["title"] as? String ?? "",
+                           body: dict["body"] as? String ?? "",
+                           labels: dict["labels"] as? [String] ?? [String](),
+                           url: dict["url"] as? String ?? "",
+                           issue_url: dict["issue_url"] as? String ?? "")
+  }
+
 }
 
 public class IssueData: JSONConvertibleObject, CustomStringConvertible {
@@ -139,9 +214,30 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
   var labels: [String] = [String]()
   var url: String = ""
   var repository_url: String = ""
-
   public var description: String {
     return "IssueData: id:\(id), title:\(title), body:\(body), state:\(state)"
+  }
+
+  public override init() {
+    super.init()
+  }
+
+  init(id: Int,
+       html_url: String,
+       state: String,
+       title: String,
+       body: String,
+       labels: [String],
+       url: String,
+       repository_url: String) {
+    self.id = id
+    self.html_url = html_url
+    self.state = state
+    self.title = title
+    self.body = body
+    self.labels = labels
+    self.url = url
+    self.repository_url = repository_url
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -169,15 +265,37 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
     ]
   }
 
+  class func createIssueData(from dict: [String: Any]) -> IssueData? {
+    return IssueData(id: dict["id"] as? Int ?? -1,
+                     html_url: dict["html_url"] as? String ?? "",
+                     state: dict["state"] as? String ?? "",
+                     title: dict["title"] as? String ?? "",
+                     body: dict["body"] as? String ?? "",
+                     labels: dict["labels"] as? [String] ?? [String](),
+                     url: dict["url"] as? String ?? "",
+                     repository_url: dict["repository_url"] as? String ?? "")
+  }
+
 }
 
 public class Changes: JSONConvertibleObject, CustomStringConvertible {
   static let registerName = "changes"
 
   var column_from: Int?
-
   public var description: String {
     return "Changes: column_from:\(column_from ?? -1)"
+  }
+
+  public override init() {
+    super.init()
+  }
+
+  init(column_id: [String: Any]?) {
+    if let column_id = column_id {
+      if let column_from = column_id["from"] as? Int {
+        self.column_from = column_from
+      }
+    }
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -193,6 +311,10 @@ public class Changes: JSONConvertibleObject, CustomStringConvertible {
     ]
   }
 
+  class func createChanges(from dict: [String: Any]) -> Changes? {
+    return Changes(column_id: dict["column_id"] as? [String: Any])
+  }
+
 }
 
 public class ProjectCard: JSONConvertibleObject, CustomStringConvertible {
@@ -200,9 +322,18 @@ public class ProjectCard: JSONConvertibleObject, CustomStringConvertible {
 
   var content_url: String?
   var column_id: Int = -1
-
   public var description: String {
     return "ProjectCard: content_url:\(content_url ?? ""), column_id:\(column_id)"
+  }
+
+  public override init() {
+    super.init()
+  }
+
+  init(content_url: String?,
+       column_id: Int) {
+    self.content_url = content_url
+    self.column_id = column_id
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -216,6 +347,11 @@ public class ProjectCard: JSONConvertibleObject, CustomStringConvertible {
        "content_url": content_url as Any,
        "column_id": column_id
     ]
+  }
+
+  class func createProjectCard(from dict: [String: Any]) -> ProjectCard? {
+    return ProjectCard(content_url: dict["content_url"] as? String,
+                       column_id: dict["column_id"] as? Int ?? -1)
   }
 
 }
