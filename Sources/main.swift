@@ -101,6 +101,7 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
 
   guard let githubAPI = GithubManager.shared.getGithubAPI(for: installationID) else {
     LogFile.error("could not get a github instance with an access token for \(installationID)")
+    response.completed(status: .unauthorized)
     return
   }
 

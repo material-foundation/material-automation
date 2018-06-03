@@ -145,7 +145,7 @@ public class GithubAPI {
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
       for issue in result {
-        guard let issueData = try issue.jsonEncodedString().jsonDecode() as? IssueData else {
+        guard let issueData = IssueData.createIssueData(from: issue) else {
           continue
         }
         var labelsToAdd = [String]()
@@ -194,7 +194,7 @@ public class GithubAPI {
   }
 
 
-  /// Gewt the project's column name by providing the column ID.
+  /// Get the project's column name by providing the column ID.
   ///
   /// - Parameter columnID: the column ID number.
   /// - Returns: the name of the column.
