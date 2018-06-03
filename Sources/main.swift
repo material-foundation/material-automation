@@ -68,21 +68,6 @@ routes.add(method: .post, uri: "/labels/updateall", handler: { request, response
       return
   }
 
-  var json: [String: Any]
-  do {
-    json = try request.postBodyString?.jsonDecode() as? [String: Any] ?? [String: Any]()
-  } catch {
-    response.completed(status: .unauthorized)
-    return
-  }
-
-  guard let installationID = json["installation"] as? String,
-    let repoURL = json["repository_url"] as? String else {
-      LogFile.error("The incoming request is missing information: \(json.description)")
-      response.completed(status: .unauthorized)
-      return
-  }
-
   guard let githubAPI = GithubManager.shared.getGithubAPI(for: installationID) else {
     LogFile.error("could not get a github instance with an access token for \(installationID)")
     response.completed(status: .unauthorized)
@@ -140,7 +125,7 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
     if githubData.action == "moved" {
       // Card moved between columns.
       ProjectAnalysis.movedCard(githubData: githubData,
-                                githubInstance: githubAPI)
+                                githubAPI: githubAPI)
     }
   }
 

@@ -22,11 +22,11 @@ import PerfectCURL
 class ProjectAnalysis {
 
   class func movedCard(githubData: GithubData,
-                       githubInstance: GithubAPI) {
+                       githubAPI: GithubAPI) {
     guard let fromColumn = githubData.changes?.column_from,
       let toColumn = githubData.projectCard?.column_id,
-      let fromColumnName = githubInstance.getProjectColumnName(columnID: fromColumn),
-      let toColumnName = githubInstance.getProjectColumnName(columnID: toColumn) else {
+      let fromColumnName = githubAPI.getProjectColumnName(columnID: fromColumn),
+      let toColumnName = githubAPI.getProjectColumnName(columnID: toColumn) else {
         LogFile.error("Couldn't fetch the column ids or column names")
         return
     }
@@ -38,17 +38,17 @@ class ProjectAnalysis {
     if let sender = githubData.sender,
       fromColumnName == "Backlog" && (toColumnName == "In progress" || toColumnName == "Done") {
       //assign issue to user
-      githubInstance.editIssue(url: contentURL, issueEdit: ["assignees": [sender]])
+      githubAPI.editIssue(url: contentURL, issueEdit: ["assignees": [sender]])
     }
 
     if toColumnName == "Done" {
       //close issue
-      githubInstance.editIssue(url: contentURL, issueEdit: ["state": "closed"])
+      githubAPI.editIssue(url: contentURL, issueEdit: ["state": "closed"])
     }
 
     if fromColumnName == "Done" && (toColumnName == "Backlog" || toColumnName == "In progress") {
       //reopen issue
-      githubInstance.editIssue(url: contentURL, issueEdit: ["state": "open"])
+      githubAPI.editIssue(url: contentURL, issueEdit: ["state": "open"])
     }
   }
 

@@ -77,32 +77,6 @@ public class GithubAuth {
     return nil
   }
 
-  class func getAccessToken(installationID: String) -> String? {
-
-    guard let accessTokenURL = getInstallationAccessTokenURL(installationID: installationID) else {
-      LogFile.error("Could not retrieve the access token URL for the installation ID: \(installationID)")
-      return nil
-    }
-
-    let accessToken = GithubAuth.createAccessToken(url: accessTokenURL)
-    LogFile.debug("the access token is good: \(accessToken != nil && accessToken != "")")
-    return accessToken
-  }
-
-  class func getInstallationAccessTokenURL(installationID: String) -> String? {
-    do {
-      let request = CURLRequest(DefaultConfigParams.githubBaseURL + "/app/installations/" + installationID)
-      addAuthHeaders(to: request)
-      let test = try request.perform().bodyString
-      LogFile.debug(test)
-      let json = try test.jsonDecode() as? [String: Any] ?? [:]
-      return json["access_tokens_url"] as? String
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
-    }
-    return nil
-  }
-
   class func createAccessToken(url: String) -> String? {
     do {
       let request = CURLRequest(url, .postString(""))

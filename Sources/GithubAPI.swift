@@ -200,6 +200,7 @@ public class GithubAPI {
   /// - Returns: the name of the column.
   func getProjectColumnName(columnID: Int) -> String? {
     LogFile.debug("Fetching name for column ID: \(columnID)")
+    var columnName: String?
     let performRequest = { () -> CURLResponse in
       let columnsAPIPath = DefaultConfigParams.githubBaseURL + "/projects/columns/\(columnID)"
       let request = GithubCURLRequest(columnsAPIPath)
@@ -207,19 +208,11 @@ public class GithubAPI {
                          with: ["Accept": "application/vnd.github.inertia-preview+json"])
       return try request.perform()
     }
-
-    do {
-      var response = try performRequest()
-      if GithubAuth.refreshCredentialsIfUnauthorized(response: response, githubInstance: self) {
-        response = try performRequest()
-      }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
-      LogFile.info("request result for getProjectColumnName: \(response.bodyString)")
-      return result["name"] as? String
-    } catch {
-      LogFile.error("error: \(error) desc: \(error.localizedDescription)")
+      columnName = result["name"] as? String
     }
-    return nil
+    return columnName
   }
 
 }
