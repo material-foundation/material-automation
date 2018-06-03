@@ -19,7 +19,7 @@ import PerfectLogger
 
 public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   static let registerName = "githubData"
-  
+
   var installationID: String?
   var action: String = ""
   var PRData: PullRequestData?
