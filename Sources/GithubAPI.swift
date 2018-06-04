@@ -193,23 +193,49 @@ public class GithubAPI {
     return pathNames
   }
 
+
+  /// Get the project's column name by providing the column ID.
+  ///
+  /// - Parameter columnID: the column ID number.
+  /// - Returns: the name of the column.
+  func getProjectColumnName(columnID: Int) -> String? {
+    LogFile.debug("Fetching name for column ID: \(columnID)")
+    var columnName: String?
+    let performRequest = { () -> CURLResponse in
+      let columnsAPIPath = DefaultConfigParams.githubBaseURL + "/projects/columns/\(columnID)"
+      let request = GithubCURLRequest(columnsAPIPath)
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
+      columnName = result["name"] as? String
+    }
+    return columnName
+  }
+
 }
 
 // API Headers
 extension GithubAPI {
-  func githubAPIHTTPHeaders() -> [String: String] {
+  func githubAPIHTTPHeaders(customHeaderParams: [String: String]?) -> [String: String] {
     let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
     headers["Authorization"] = "token \(self.accessToken)"
     LogFile.debug("the access token is: \(self.accessToken)")
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
     headers["User-Agent"] = userAgent
+
+    if let customHeaderParams = customHeaderParams {
+      customHeaderParams.forEach { (k,v) in headers[k] = v }
+    }
     return headers
   }
 
-  func addAPIHeaders(to request: CURLRequest) {
+  func addAPIHeaders(to request: CURLRequest, with customHeaderParams: [String: String]? = nil) {
     APIOneSecondDelay()
-    let headersDict = githubAPIHTTPHeaders()
+    let headersDict = githubAPIHTTPHeaders(customHeaderParams: customHeaderParams)
     for (k,v) in headersDict {
       request.addHeader(HTTPRequestHeader.Name.fromStandard(name: k), value: v)
     }

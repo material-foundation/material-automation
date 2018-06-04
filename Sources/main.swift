@@ -106,16 +106,27 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
   }
 
   if let PRData = githubData.PRData {
+    // Pull Request data received.
     if githubData.action == "synchronize" || githubData.action == "opened" {
+      // Pull Request either opened or updated.
       LabelAnalysis.addAndFixLabelsForPullRequests(PRData: PRData,
                                                    githubAPI: githubAPI)
     }
   } else if let issueData = githubData.issueData {
-    if githubData.action == "synchronize" || githubData.action == "opened" {
+    // Issue data received.
+    if githubData.action == "opened" {
+      // Issue opened.
       LabelAnalysis.addAndFixLabelsForIssues(issueData: issueData,
                                              githubAPI: githubAPI)
       LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData,
                                                      githubAPI: githubAPI)
+    }
+  } else if githubData.projectCard != nil {
+    // Project card data received.
+    if githubData.action == "moved" {
+      // Card moved between columns.
+      ProjectAnalysis.didMoveCard(githubData: githubData,
+                                  githubAPI: githubAPI)
     }
   }
 
@@ -135,6 +146,8 @@ server.addRoutes(routes)
 
 // Set a listen port of 8080
 server.serverPort = 8080
+
+GithubData.registerModels()
 
 do {
   // Launch the HTTP server.
