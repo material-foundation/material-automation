@@ -278,6 +278,11 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
 
 }
 
+
+/// Changes is a class build from the incoming JSON webhook from GitHub where the field in thr JSON
+/// is "changes". This field usually surfaces when there is any change done to an "entity" on GitHub.
+/// If it's an issue, a PR, or a project card that has been edited, then changes provide specific
+/// information on the change.
 public class Changes: JSONConvertibleObject, CustomStringConvertible {
   static let registerName = "changes"
 

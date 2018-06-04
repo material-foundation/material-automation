@@ -21,8 +21,8 @@ import PerfectCURL
 
 class ProjectAnalysis {
 
-  class func movedCard(githubData: GithubData,
-                       githubAPI: GithubAPI) {
+  class func didMoveCard(githubData: GithubData,
+                         githubAPI: GithubAPI) {
     guard let fromColumn = githubData.changes?.column_from,
       let toColumn = githubData.projectCard?.column_id,
       let fromColumnName = githubAPI.getProjectColumnName(columnID: fromColumn),

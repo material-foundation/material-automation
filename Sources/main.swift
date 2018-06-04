@@ -125,8 +125,8 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
     // Project card data received.
     if githubData.action == "moved" {
       // Card moved between columns.
-      ProjectAnalysis.movedCard(githubData: githubData,
-                                githubAPI: githubAPI)
+      ProjectAnalysis.didMoveCard(githubData: githubData,
+                                  githubAPI: githubAPI)
     }
   }
 
