@@ -26,6 +26,7 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   var issueData: IssueData?
   var changes: Changes?
   var projectCard: ProjectCard?
+  var project: Project?
   var sender: String?
   public var description: String {
     return "GithubData: \(action), Installation ID: \(installationID ?? "No Installation ID")," +
@@ -360,3 +361,43 @@ public class ProjectCard: JSONConvertibleObject, CustomStringConvertible {
   }
 
 }
+
+public class Project: JSONConvertibleObject, CustomStringConvertible {
+  static let registerName = "project"
+
+  var columns_url: String?
+  var name: String?
+  public var description: String {
+    return "Project: columns_url:\(columns_url ?? ""), name:\(name ?? "")"
+  }
+
+  public override init() {
+    super.init()
+  }
+
+  init(columns_url: String?,
+       name: String?) {
+    self.columns_url = columns_url
+    self.name = name
+  }
+
+  public override func setJSONValues(_ values: [String : Any]) {
+    self.columns_url = getJSONValue(named: "columns_url", from: values, defaultValue: nil)
+    self.name = getJSONValue(named: "name", from: values, defaultValue: nil)
+  }
+
+  public override func getJSONValues() -> [String : Any] {
+    return
+      [JSONDecoding.objectIdentifierKey:Project.registerName,
+       "columns_url": columns_url as Any,
+       "name": name as Any
+    ]
+  }
+
+  class func createProject(from dict: [String: Any]) -> Project? {
+    return Project(columns_url: dict["columns_url"] as? String,
+                   name: dict["name"] as? String)
+  }
+
+}
+

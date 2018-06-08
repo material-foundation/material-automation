@@ -52,5 +52,29 @@ class ProjectAnalysis {
     }
   }
 
+  class func didCloseProject(githubData: GithubData,
+                             githubAPI: GithubAPI) {
+    guard let projectName = githubData.project?.name else {
+      LogFile.error("No project name")
+      return
+    }
+    // Example of regex match: "2018-06-05 - 2018-06-18"
+    let regex = "^[\\d]{4}-[\\d]{2}-[\\d]{2} - [\\d]{4}-[\\d]{2}-[\\d]{2}$"
+    guard projectName.range(of: regex, options: .regularExpression, range: nil, locale: nil) != nil,
+    let endDate = projectName.components(separatedBy: " - ").last else {
+      LogFile.info("The project closed didn't fit the regex")
+      return
+    }
+    // Create a new project
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    if let lastSprintEndDate = formatter.date(from: endDate),
+      let nextSprintStartDate = Calendar.current.date(byAdding: .day, value: 1, to: lastSprintEndDate),
+      let nextSprintEndDate = Calendar.current.date(byAdding: .day, value: 14, to: nextSprintStartDate) {
+      
+    }
+
+  }
+
 
 }

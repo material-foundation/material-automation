@@ -215,6 +215,23 @@ public class GithubAPI {
     return columnName
   }
 
+  func createNewProject(name: String, body: String = "") -> String? {
+    LogFile.debug("Creating new project with the name \(name), and body \(body)")
+    var projectID: String?
+    let performRequest = { () -> CURLResponse in
+      let projectsURL = DefaultConfigParams.githubBaseURL + "/repos/:owner/:repo/projects"
+      let request = GithubCURLRequest(projectsURL)
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
+      columnName = result["name"] as? String
+    }
+    return projectID
+  }
+
 }
 
 // API Headers
