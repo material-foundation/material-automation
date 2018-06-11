@@ -45,7 +45,6 @@ class LabelAnalysis {
     do {
       let contents =
         try CURLRequest(url, .followLocation(true)).perform().bodyString
-      print(contents)
       let lines = contents.split(separator: "\n")
       for line in lines {
         if line.starts(with: "+++") {

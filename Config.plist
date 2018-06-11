@@ -5,7 +5,7 @@
 	<key>CLOUD_STORAGE_BUCKET</key>
 	<string>material-automation.appspot.com</string>
 	<key>GITHUB_APP_ID</key>
-	<string>10819</string>
+	<string>11993</string>
 	<key>PEM_FILE_NAME</key>
 	<string>GithubKeyDebug.pem</string>
 	<key>USER_AGENT</key>

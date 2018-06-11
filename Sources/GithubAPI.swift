@@ -229,7 +229,9 @@ public class GithubAPI {
     }
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
-      projectID = result["id"] as? String
+      if let projectIDNum = result["id"] as? Int {
+        projectID = String(projectIDNum)
+      }
     }
     return projectID
   }
@@ -247,7 +249,9 @@ public class GithubAPI {
     }
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
-      columnID = result["id"] as? String
+      if let columnIDNum = result["id"] as? Int {
+        columnID = String(columnIDNum)
+      }
     }
     return columnID
   }
@@ -265,10 +269,13 @@ public class GithubAPI {
         return try request.perform()
       }
       githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
-        let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
-        if let columnName = result["name"] as? String,
-          let cardsURL = result["cards_url"] as? String {
-          columnNameToCardsURL[columnName] = cardsURL
+        let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
+        for column in result {
+          LogFile.debug(column.description)
+          if let columnName = column["name"] as? String,
+            let cardsURL = column["cards_url"] as? String {
+            columnNameToCardsURL[columnName] = cardsURL
+          }
         }
         if let nextURL = self.paginate(response: response) {
           url = nextURL
@@ -333,6 +340,21 @@ public class GithubAPI {
     }
     githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
   }
+
+  func getIssueID(issueURL: String) -> Int? {
+    LogFile.debug("getting issue ID with url: \(issueURL)")
+    var issueID: Int?
+    let performRequest = { () -> CURLResponse in
+      let request = GithubCURLRequest(issueURL)
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
+      issueID = result["id"] as? Int
+    }
+    return issueID
+  }
+
 }
 
 // API Headers

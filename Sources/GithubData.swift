@@ -61,7 +61,8 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
        changes: [String: Any]?,
        projectCard: [String: Any]?,
        sender: [String: Any]?,
-       url: String?) {
+       project: [String: Any]?,
+       repository: [String: Any]?) {
     if let installation = installation {
       if let installationNum = installation["id"] as? Int {
         self.installationID = "\(installationNum)"
@@ -83,7 +84,14 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
     if let sender = sender {
       self.sender = sender["login"] as? String
     }
-    self.url = url
+    if let project = project {
+      self.project = Project.createProject(from: project)
+    }
+    if let repository = repository {
+      if let url = repository["url"] as? String {
+        self.url = url
+      }
+    }
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -98,7 +106,10 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
     let senderDict: [String: Any]? =
       getJSONValue(named: "sender", from: values, defaultValue: nil)
     self.sender = senderDict?["login"] as? String
-    self.url = getJSONValue(named: "url", from: values, defaultValue: nil)
+    self.project = getJSONValue(named: "project", from: values, defaultValue: nil)
+    let repository: [String: Any]? =
+      getJSONValue(named: "repository", from: values, defaultValue: nil)
+    self.url = repository?["url"] as? String
   }
 
   public override func getJSONValues() -> [String : Any] {
@@ -109,6 +120,7 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
             "issue": issueData as Any,
             "changes": changes as Any,
             "project_card": projectCard as Any,
+            "project": project as Any,
             "url": url as Any]
   }
 
@@ -124,7 +136,8 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
                         changes: incoming["changes"] as? [String: Any],
                         projectCard: incoming["project_card"] as? [String: Any],
                         sender: incoming["sender"] as? [String: Any],
-                        url: incoming["url"] as? String)
+                        project: incoming["project"] as? [String: Any],
+                        repository: incoming["repository"] as? [String: Any])
     } catch {
       return nil
     }

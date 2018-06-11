@@ -70,7 +70,7 @@ class ProjectAnalysis {
     formatter.dateFormat = "yyyy-MM-dd"
     if let lastSprintEndDate = formatter.date(from: endDate),
       let nextSprintStartDate = Calendar.current.date(byAdding: .day, value: 1, to: lastSprintEndDate),
-      let nextSprintEndDate = Calendar.current.date(byAdding: .day, value: 14, to: nextSprintStartDate) {
+      let nextSprintEndDate = Calendar.current.date(byAdding: .day, value: 13, to: nextSprintStartDate) {
       let nextSprint = formatter.string(from: nextSprintStartDate)  + " - " +
         formatter.string(from: nextSprintEndDate)
       // Create a new sprint project.
@@ -92,8 +92,8 @@ class ProjectAnalysis {
                                     contentID: nil,
                                     contentType: nil,
                                     note:
-          "Please manage automation for the backlog. Change preset to \"To do\" and turn on" +
-          "\"Move all reopened issues here\", \"Move all reopened pull requests here\"")
+          "Please manage automation for the backlog column. Change preset to \"To do\" and turn" +
+          " on \"Move all reopened issues here\", \"Move all reopened pull requests here\"")
       }
       if let inProgressID = inProgressID {
         githubAPI.createProjectCard(cardsURL:
@@ -101,8 +101,8 @@ class ProjectAnalysis {
                                     contentID: nil,
                                     contentType: nil,
                                     note:
-          "Please manage automation for the backlog. Change preset to \"In progress\" and turn" +
-          "on \"Move all newly added pull requests here\"")
+          "Please manage automation for the in progress column. Change preset to \"In progress\"" +
+          " and turn on \"Move all newly added pull requests here\"")
       }
       if let doneID = doneID {
         githubAPI.createProjectCard(cardsURL:
@@ -110,9 +110,9 @@ class ProjectAnalysis {
                                     contentID: nil,
                                     contentType: nil,
                                     note:
-          "Please manage automation for the backlog. Change preset to \"Done\" and turn on" +
-          "\"Move all closed issues here\", \"Move all merged pull requests here\", \"Move all" +
-          "closed, unmerged pull requests here\"")
+          "Please manage automation for the done column. Change preset to \"Done\" and turn on" +
+          " \"Move all closed issues here\", \"Move all merged pull requests here\", \"Move all" +
+          " closed, unmerged pull requests here\"")
       }
 
       // Get last sprint's columns.
@@ -135,14 +135,13 @@ class ProjectAnalysis {
     }
   }
 
-  private class func parseCardContentURL(card: [String: Any]) -> (Int, String)? {
+  private class func parseCardContentURL(card: [String: Any], githubAPI: GithubAPI) -> (Int, String)? {
     var (contentID, contentType): (Int, String)
     guard let contentURL = card["content_url"] as? String else {
       return nil
     }
-    if let contentIDStr = contentURL.components(separatedBy: "/").last,
-      let contID = Int(contentIDStr) {
-      contentID = contID
+    if let issueID = githubAPI.getIssueID(issueURL: contentURL) {
+      contentID = issueID
     } else {
       return nil
     }
@@ -162,7 +161,7 @@ class ProjectAnalysis {
     if let columnID = columnID {
       let note = card["note"] as? String
       let cardsURL = DefaultConfigParams.githubBaseURL + "/projects/columns/" + columnID + "/cards"
-      if let (contentID, contentType) = parseCardContentURL(card: card) {
+      if let (contentID, contentType) = parseCardContentURL(card: card, githubAPI: githubAPI) {
         githubAPI.createProjectCard(cardsURL: cardsURL,
                                     contentID: contentID,
                                     contentType: contentType,
