@@ -93,13 +93,52 @@ class ProjectAnalysis {
       let projectColumns = githubAPI.getProjectColumnsCardsURLs(columnsURL: columnsURL)
       for (columnName, cardsURL) in projectColumns {
         if columnName == "In progress" {
-
+          for card in githubAPI.listProjectCards(cardsURL: cardsURL) {
+            createCardFromCard(with: card, and: inProgressID, githubAPI: githubAPI)
+          }
         } else if columnName == "Backlog" {
-
+          for card in githubAPI.listProjectCards(cardsURL: cardsURL) {
+            createCardFromCard(with: card, and: lastBacklogID, githubAPI: githubAPI)
+          }
         }
       }
     }
+  }
 
+  class func parseCardContentURL(card: [String: Any]) -> (Int, String)? {
+    var (contentID, contentType): (Int, String)
+    guard let contentURL = card["content_url"] as? String else {
+      return nil
+    }
+    if let contentIDStr = contentURL.components(separatedBy: "/").last,
+      let contID = Int(contentIDStr) {
+      contentID = contID
+    } else {
+      return nil
+    }
+    if contentURL.contains(string: "/issues/") {
+      contentType = "Issue"
+    } else if contentURL.contains(string: "/pull/") {
+      contentType = "PullRequest"
+    } else {
+      return nil
+    }
+    return (contentID, contentType)
+  }
+
+  class func createCardFromCard(with card: [String: Any],
+                                and columnID: String?,
+                                githubAPI: GithubAPI) {
+    if let columnID = columnID {
+      let note = card["note"] as? String
+      let cardsURL = DefaultConfigParams.githubBaseURL + "/projects/columns/" + columnID + "/cards"
+      if let (contentID, contentType) = parseCardContentURL(card: card) {
+        githubAPI.createProjectCard(cardsURL: cardsURL,
+                                    contentID: contentID,
+                                    contentType: contentType,
+                                    note: note ?? "")
+      }
+    }
   }
 
 

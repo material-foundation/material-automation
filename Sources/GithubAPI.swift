@@ -283,6 +283,49 @@ public class GithubAPI {
     }
     return columnNameToCardsURL
   }
+
+  func listProjectCards(cardsURL: String) -> [[String: Any]] {
+    LogFile.debug("list project cards with url \(cardsURL)")
+    var cards = [[String: Any]]()
+    var url = cardsURL
+    var shouldPaginate = false
+    while true {
+      let performRequest = { () -> CURLResponse in
+        let request = GithubCURLRequest(url)
+        self.addAPIHeaders(to: request,
+                           with: ["Accept": "application/vnd.github.inertia-preview+json"])
+        return try request.perform()
+      }
+      githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+        let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
+        cards.append(contentsOf: result)
+        if let nextURL = self.paginate(response: response) {
+          url = nextURL
+          shouldPaginate = true
+        } else {
+          shouldPaginate = false
+        }
+      }
+      if !shouldPaginate {
+        break
+      }
+    }
+    return cards
+  }
+
+  func createProjectCard(cardsURL: String, contentID: Int, contentType: String, note: String = "") {
+    LogFile.debug("creating project card with content ID: \(contentID), content type: \(contentType), and note: \(note)")
+    let performRequest = { () -> CURLResponse in
+      let requestBody: [String: Any]
+        = ["content_id": contentID, "content_type": contentType, "note": note]
+      let request = GithubCURLRequest(cardsURL,
+                                      .postString(try requestBody.jsonEncodedString()))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
+  }
 }
 
 // API Headers
