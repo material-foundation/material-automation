@@ -79,11 +79,31 @@ class ProjectAnalysis {
         return
       }
       // Create columns for the new sprint project.
-      _ = githubAPI.createProjectColumn(name: "Backlog", projectID: projectID)
+      let backlogID = githubAPI.createProjectColumn(name: "Backlog", projectID: projectID)
       let inProgressID = githubAPI.createProjectColumn(name: "In progress", projectID: projectID)
-      _ = githubAPI.createProjectColumn(name: "Done", projectID: projectID)
+      let doneID = githubAPI.createProjectColumn(name: "Done", projectID: projectID)
       let lastBacklogID = githubAPI.createProjectColumn(name: "Last sprint backlog",
                                                         projectID: projectID)
+
+      // Create automation instruction cards
+      if let backlogID = backlogID {
+        githubAPI.createProjectCard(cardsURL: DefaultConfigParams.githubBaseURL + "/projects/columns/" + backlogID + "/cards",
+                                    contentID: nil,
+                                    contentType: nil,
+                                    note: "Please manage automation for the backlog. Change preset to \"To do\" and turn on \"Move all reopened issues here\", \"Move all reopened pull requests here\"")
+      }
+      if let inProgressID = inProgressID {
+        githubAPI.createProjectCard(cardsURL: DefaultConfigParams.githubBaseURL + "/projects/columns/" + inProgressID + "/cards",
+                                    contentID: nil,
+                                    contentType: nil,
+                                    note: "Please manage automation for the backlog. Change preset to \"In progress\" and turn on \"Move all newly added pull requests here\"")
+      }
+      if let doneID = doneID {
+        githubAPI.createProjectCard(cardsURL: DefaultConfigParams.githubBaseURL + "/projects/columns/" + doneID + "/cards",
+                                    contentID: nil,
+                                    contentType: nil,
+                                    note: "Please manage automation for the backlog. Change preset to \"Done\" and turn on \"Move all closed issues here\", \"Move all merged pull requests here\", \"Move all closed, unmerged pull requests here\"")
+      }
 
       // Get last sprint's columns
       guard let columnsURL = githubData.project?.columns_url else {
@@ -136,10 +156,9 @@ class ProjectAnalysis {
         githubAPI.createProjectCard(cardsURL: cardsURL,
                                     contentID: contentID,
                                     contentType: contentType,
-                                    note: note ?? "")
+                                    note: note)
       }
     }
   }
-
 
 }

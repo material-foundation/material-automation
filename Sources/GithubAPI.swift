@@ -313,11 +313,18 @@ public class GithubAPI {
     return cards
   }
 
-  func createProjectCard(cardsURL: String, contentID: Int, contentType: String, note: String = "") {
-    LogFile.debug("creating project card with content ID: \(contentID), content type: \(contentType), and note: \(note)")
+  func createProjectCard(cardsURL: String, contentID: Int?, contentType: String?, note: String?) {
+    LogFile.debug("creating project card with content ID: \(contentID ?? -1), content type:" +
+      "\(contentType ?? ""), and note: \(note ?? "")")
     let performRequest = { () -> CURLResponse in
-      let requestBody: [String: Any]
-        = ["content_id": contentID, "content_type": contentType, "note": note]
+      var requestBody = [String: Any]()
+      if let note = note {
+        requestBody = ["note": note]
+      } else if let contentID = contentID, let contentType = contentType {
+        requestBody = ["content_id": contentID, "content_type": contentType]
+      } else {
+        LogFile.error("missing the right params to create a project card")
+      }
       let request = GithubCURLRequest(cardsURL,
                                       .postString(try requestBody.jsonEncodedString()))
       self.addAPIHeaders(to: request,
