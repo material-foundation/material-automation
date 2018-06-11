@@ -236,6 +236,20 @@ public class GithubAPI {
     return projectID
   }
 
+  func updateProject(url: String, projectID: String, projectUpdate: [String: Any]) {
+    LogFile.debug("Updating a project with id: \(projectID)")
+    let performRequest = { () -> CURLResponse in
+      let projectURL = url + "/projects/" + projectID
+      let request = GithubCURLRequest(projectURL,
+                                      .httpMethod(.patch),
+                                      .postString(try projectUpdate.jsonEncodedString()))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
+  }
+
   func createProjectColumn(name: String, projectID: String) -> String? {
     LogFile.debug("Creating project column with name \(name)")
     var columnID: String?
@@ -346,6 +360,7 @@ public class GithubAPI {
     var issueID: Int?
     let performRequest = { () -> CURLResponse in
       let request = GithubCURLRequest(issueURL)
+      self.addAPIHeaders(to: request)
       return try request.perform()
     }
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in

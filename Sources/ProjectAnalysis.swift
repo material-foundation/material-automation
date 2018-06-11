@@ -66,6 +66,8 @@ class ProjectAnalysis {
       return
     }
     // Create a new project.
+    
+
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
     if let lastSprintEndDate = formatter.date(from: endDate),
