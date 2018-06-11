@@ -7,7 +7,7 @@
 	<key>GITHUB_APP_ID</key>
 	<string>10819</string>
 	<key>PEM_FILE_NAME</key>
-	<string>GithubKey.pem</string>
+	<string>GithubKeyDebug.pem</string>
 	<key>USER_AGENT</key>
 	<string>Material Automation</string>
 </dict>
