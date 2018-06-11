@@ -28,9 +28,11 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
   var projectCard: ProjectCard?
   var project: Project?
   var sender: String?
+  var url: String?
   public var description: String {
     return "GithubData: \(action), Installation ID: \(installationID ?? "No Installation ID")," +
-    "\(PRData?.description ?? "No PR Data"), \(issueData?.description ?? "No Issue Data")"
+    "\(PRData?.description ?? "No PR Data"), \(issueData?.description ?? "No Issue Data")," +
+    "url: \(url ?? "No url")"
   }
 
   static func registerModels() {
@@ -44,6 +46,8 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
                                        creator: { return Changes() })
     JSONDecoding.registerJSONDecodable(name: ProjectCard.registerName,
                                        creator: { return ProjectCard() })
+    JSONDecoding.registerJSONDecodable(name: ProjectCard.registerName,
+                                       creator: { return Project() })
   }
 
   public override init() {
@@ -56,7 +60,8 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
        issueData: [String: Any]?,
        changes: [String: Any]?,
        projectCard: [String: Any]?,
-       sender: [String: Any]?) {
+       sender: [String: Any]?,
+       url: String?) {
     if let installation = installation {
       if let installationNum = installation["id"] as? Int {
         self.installationID = "\(installationNum)"
@@ -78,6 +83,7 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
     if let sender = sender {
       self.sender = sender["login"] as? String
     }
+    self.url = url
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
@@ -92,6 +98,7 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
     let senderDict: [String: Any]? =
       getJSONValue(named: "sender", from: values, defaultValue: nil)
     self.sender = senderDict?["login"] as? String
+    self.url = getJSONValue(named: "url", from: values, defaultValue: nil)
   }
 
   public override func getJSONValues() -> [String : Any] {
@@ -101,7 +108,8 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
             "pull_request": PRData as Any,
             "issue": issueData as Any,
             "changes": changes as Any,
-            "project_card": projectCard as Any]
+            "project_card": projectCard as Any,
+            "url": url as Any]
   }
 
   class func createGithubData(from json: String) -> GithubData? {
@@ -115,7 +123,8 @@ public class GithubData : JSONConvertibleObject, CustomStringConvertible {
                         issueData: incoming["issue"] as? [String: Any],
                         changes: incoming["changes"] as? [String: Any],
                         projectCard: incoming["project_card"] as? [String: Any],
-                        sender: incoming["sender"] as? [String: Any])
+                        sender: incoming["sender"] as? [String: Any],
+                        url: incoming["url"] as? String)
     } catch {
       return nil
     }

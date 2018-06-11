@@ -54,8 +54,8 @@ class ProjectAnalysis {
 
   class func didCloseProject(githubData: GithubData,
                              githubAPI: GithubAPI) {
-    guard let projectName = githubData.project?.name else {
-      LogFile.error("No project name")
+    guard let projectName = githubData.project?.name, let url = githubData.url else {
+      LogFile.error("No project name or github url")
       return
     }
     // Example of regex match: "2018-06-05 - 2018-06-18"
@@ -71,7 +71,33 @@ class ProjectAnalysis {
     if let lastSprintEndDate = formatter.date(from: endDate),
       let nextSprintStartDate = Calendar.current.date(byAdding: .day, value: 1, to: lastSprintEndDate),
       let nextSprintEndDate = Calendar.current.date(byAdding: .day, value: 14, to: nextSprintStartDate) {
-      
+      let nextSprint = formatter.string(from: nextSprintStartDate)  + " - " +
+        formatter.string(from: nextSprintEndDate)
+      // Create a new sprint project.
+      guard let projectID = githubAPI.createNewProject(url: url, name: nextSprint) else {
+        LogFile.error("The project could not be created")
+        return
+      }
+      // Create columns for the new sprint project.
+      _ = githubAPI.createProjectColumn(name: "Backlog", projectID: projectID)
+      let inProgressID = githubAPI.createProjectColumn(name: "In progress", projectID: projectID)
+      _ = githubAPI.createProjectColumn(name: "Done", projectID: projectID)
+      let lastBacklogID = githubAPI.createProjectColumn(name: "Last sprint backlog",
+                                                        projectID: projectID)
+
+      // Get last sprint's columns
+      guard let columnsURL = githubData.project?.columns_url else {
+        LogFile.error("couldn't get the columns URL of the previous sprint")
+        return
+      }
+      let projectColumns = githubAPI.getProjectColumnsCardsURLs(columnsURL: columnsURL)
+      for (columnName, cardsURL) in projectColumns {
+        if columnName == "In progress" {
+
+        } else if columnName == "Backlog" {
+
+        }
+      }
     }
 
   }

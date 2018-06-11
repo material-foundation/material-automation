@@ -129,7 +129,7 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
                                   githubAPI: githubAPI)
     }
   } else if githubData.project != nil {
-    if GithubData.action == "closed" {
+    if githubData.action == "closed" {
       // Project closed
       ProjectAnalysis.didCloseProject(githubData: githubData,
                                       githubAPI: githubAPI)
