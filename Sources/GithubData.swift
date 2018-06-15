@@ -389,8 +389,9 @@ public class Project: JSONConvertibleObject, CustomStringConvertible {
 
   var columns_url: String?
   var name: String?
+  var url: String?
   public var description: String {
-    return "Project: columns_url:\(columns_url ?? ""), name:\(name ?? "")"
+    return "Project: columns_url:\(columns_url ?? ""), name:\(name ?? ""), url:\(url ?? "")"
   }
 
   public override init() {
@@ -398,27 +399,32 @@ public class Project: JSONConvertibleObject, CustomStringConvertible {
   }
 
   init(columns_url: String?,
-       name: String?) {
+       name: String?,
+       url: String?) {
     self.columns_url = columns_url
     self.name = name
+    self.url = url
   }
 
   public override func setJSONValues(_ values: [String : Any]) {
     self.columns_url = getJSONValue(named: "columns_url", from: values, defaultValue: nil)
     self.name = getJSONValue(named: "name", from: values, defaultValue: nil)
+    self.url = getJSONValue(named: "url", from: values, defaultValue: nil)
   }
 
   public override func getJSONValues() -> [String : Any] {
     return
       [JSONDecoding.objectIdentifierKey:Project.registerName,
        "columns_url": columns_url as Any,
-       "name": name as Any
+       "name": name as Any,
+       "url": url as Any
     ]
   }
 
   class func createProject(from dict: [String: Any]) -> Project? {
     return Project(columns_url: dict["columns_url"] as? String,
-                   name: dict["name"] as? String)
+                   name: dict["name"] as? String,
+                   url: dict["url"] as? String)
   }
 
 }

@@ -236,10 +236,9 @@ public class GithubAPI {
     return projectID
   }
 
-  func updateProject(url: String, projectID: String, projectUpdate: [String: Any]) {
-    LogFile.debug("Updating a project with id: \(projectID)")
+  func updateProject(projectURL: String, projectUpdate: [String: Any]) {
+    LogFile.debug("Updating a project with url: \(projectURL) and update: \(projectUpdate.description)")
     let performRequest = { () -> CURLResponse in
-      let projectURL = url + "/projects/" + projectID
       let request = GithubCURLRequest(projectURL,
                                       .httpMethod(.patch),
                                       .postString(try projectUpdate.jsonEncodedString()))
@@ -348,6 +347,18 @@ public class GithubAPI {
       }
       let request = GithubCURLRequest(cardsURL,
                                       .postString(try requestBody.jsonEncodedString()))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
+  }
+
+  func deleteProjectCard(cardID: String) {
+    LogFile.debug("deleting a project card with card ID: \(cardID)")
+    let performRequest = { () -> CURLResponse in
+      let request = GithubCURLRequest(DefaultConfigParams.githubBaseURL + "/projects/columns/cards/" + cardID,
+                                      .httpMethod(.delete))
       self.addAPIHeaders(to: request,
                          with: ["Accept": "application/vnd.github.inertia-preview+json"])
       return try request.perform()

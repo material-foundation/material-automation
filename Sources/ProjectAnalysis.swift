@@ -65,94 +65,88 @@ class ProjectAnalysis {
       LogFile.info("The project closed didn't fit the regex")
       return
     }
-    // Create a new project.
-    
 
+    // Update project name, reopen project
+    guard let projectURL = githubData.project?.url else {
+      LogFile.error("couldn't fetch the project URL")
+      return
+    }
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
-    if let lastSprintEndDate = formatter.date(from: endDate),
+    guard let lastSprintEndDate = formatter.date(from: endDate),
       let nextSprintStartDate = Calendar.current.date(byAdding: .day, value: 1, to: lastSprintEndDate),
-      let nextSprintEndDate = Calendar.current.date(byAdding: .day, value: 13, to: nextSprintStartDate) {
-      let nextSprint = formatter.string(from: nextSprintStartDate)  + " - " +
-        formatter.string(from: nextSprintEndDate)
-      // Create a new sprint project.
-      guard let projectID = githubAPI.createNewProject(url: url, name: nextSprint) else {
-        LogFile.error("The project could not be created")
+      let nextSprintEndDate = Calendar.current.date(byAdding: .day, value: 13, to: nextSprintStartDate) else {
+        LogFile.error("couldn't parse the project date")
         return
-      }
-      // Create columns for the new sprint project.
-      let backlogID = githubAPI.createProjectColumn(name: "Backlog", projectID: projectID)
-      let inProgressID = githubAPI.createProjectColumn(name: "In progress", projectID: projectID)
-      let doneID = githubAPI.createProjectColumn(name: "Done", projectID: projectID)
-      let lastBacklogID = githubAPI.createProjectColumn(name: "Last sprint backlog",
-                                                        projectID: projectID)
+    }
 
-      // Create automation instruction cards.
-      if let backlogID = backlogID {
-        githubAPI.createProjectCard(cardsURL:
-          DefaultConfigParams.githubBaseURL + "/projects/columns/" + backlogID + "/cards",
-                                    contentID: nil,
-                                    contentType: nil,
-                                    note:
-          "Please manage automation for the backlog column. Change preset to \"To do\" and turn" +
-          " on \"Move all reopened issues here\", \"Move all reopened pull requests here\"")
-      }
-      if let inProgressID = inProgressID {
-        githubAPI.createProjectCard(cardsURL:
-          DefaultConfigParams.githubBaseURL + "/projects/columns/" + inProgressID + "/cards",
-                                    contentID: nil,
-                                    contentType: nil,
-                                    note:
-          "Please manage automation for the in progress column. Change preset to \"In progress\"" +
-          " and turn on \"Move all newly added pull requests here\"")
-      }
-      if let doneID = doneID {
-        githubAPI.createProjectCard(cardsURL:
-          DefaultConfigParams.githubBaseURL + "/projects/columns/" + doneID + "/cards",
-                                    contentID: nil,
-                                    contentType: nil,
-                                    note:
-          "Please manage automation for the done column. Change preset to \"Done\" and turn on" +
-          " \"Move all closed issues here\", \"Move all merged pull requests here\", \"Move all" +
-          " closed, unmerged pull requests here\"")
-      }
+    // Rename existing sprint's name to next sprint date and re-open it.
+    let nextSprint = formatter.string(from: nextSprintStartDate) + " - " + formatter.string(from: nextSprintEndDate)
+    githubAPI.updateProject(projectURL: projectURL, projectUpdate: ["name": nextSprint,
+                                                                    "state": "open"])
 
-      // Get last sprint's columns.
-      guard let columnsURL = githubData.project?.columns_url else {
-        LogFile.error("couldn't get the columns URL of the previous sprint")
-        return
-      }
-      let projectColumns = githubAPI.getProjectColumnsCardsURLs(columnsURL: columnsURL)
-      for (columnName, cardsURL) in projectColumns {
-        if columnName == "In progress" {
-          for card in githubAPI.listProjectCards(cardsURL: cardsURL) {
-            createCardFromCard(with: card, and: inProgressID, githubAPI: githubAPI)
-          }
-        } else if columnName == "Backlog" {
-          for card in githubAPI.listProjectCards(cardsURL: cardsURL) {
-            createCardFromCard(with: card, and: lastBacklogID, githubAPI: githubAPI)
+
+    // Create a new project to save last sprint's history
+    guard let projectID = githubAPI.createNewProject(url: url, name: "New Project") else {
+      LogFile.error("The project could not be created")
+      return
+    }
+
+    githubAPI.updateProject(projectURL: DefaultConfigParams.githubBaseURL + "/projects/" + projectID,
+                            projectUpdate: ["name": projectName,
+                                            "state": "closed"])
+
+    // Create columns for the new sprint project.
+    let backlogID = githubAPI.createProjectColumn(name: "Backlog", projectID: projectID)
+    let inProgressID = githubAPI.createProjectColumn(name: "In progress", projectID: projectID)
+    let doneID = githubAPI.createProjectColumn(name: "Done", projectID: projectID)
+    //      let lastBacklogID = githubAPI.createProjectColumn(name: "Last sprint backlog",
+    //                                                        projectID: projectID)
+
+    // Get last sprint's columns.
+    guard let columnsURL = githubData.project?.columns_url else {
+      LogFile.error("couldn't get the columns URL of the previous sprint")
+      return
+    }
+    let projectColumns = githubAPI.getProjectColumnsCardsURLs(columnsURL: columnsURL)
+    for (columnName, cardsURL) in projectColumns {
+      if columnName == "In progress" {
+        for card in githubAPI.listProjectCards(cardsURL: cardsURL) {
+          createCardFromCard(with: card, and: inProgressID, githubAPI: githubAPI)
+        }
+      } else if columnName == "Backlog" {
+        for card in githubAPI.listProjectCards(cardsURL: cardsURL) {
+          createCardFromCard(with: card, and: backlogID, githubAPI: githubAPI)
+        }
+      } else if columnName == "Done" {
+        for card in githubAPI.listProjectCards(cardsURL: cardsURL) {
+          createCardFromCard(with: card, and: doneID, githubAPI: githubAPI)
+          if let cardID = card["id"] as? Int {
+            // Remove Done cards from the sprint
+            githubAPI.deleteProjectCard(cardID: String(cardID))
           }
         }
       }
     }
+
   }
 
-  private class func parseCardContentURL(card: [String: Any], githubAPI: GithubAPI) -> (Int, String)? {
+  private class func parseCardContentURL(card: [String: Any], githubAPI: GithubAPI) -> (Int?, String?) {
     var (contentID, contentType): (Int, String)
     guard let contentURL = card["content_url"] as? String else {
-      return nil
+      return (nil, nil)
     }
     if let issueID = githubAPI.getIssueID(issueURL: contentURL) {
       contentID = issueID
     } else {
-      return nil
+      return (nil, nil)
     }
     if contentURL.contains(string: "/issues/") {
       contentType = "Issue"
     } else if contentURL.contains(string: "/pull/") {
       contentType = "PullRequest"
     } else {
-      return nil
+      return (nil, nil)
     }
     return (contentID, contentType)
   }
@@ -163,12 +157,11 @@ class ProjectAnalysis {
     if let columnID = columnID {
       let note = card["note"] as? String
       let cardsURL = DefaultConfigParams.githubBaseURL + "/projects/columns/" + columnID + "/cards"
-      if let (contentID, contentType) = parseCardContentURL(card: card, githubAPI: githubAPI) {
-        githubAPI.createProjectCard(cardsURL: cardsURL,
-                                    contentID: contentID,
-                                    contentType: contentType,
-                                    note: note)
-      }
+      let (contentID, contentType) = parseCardContentURL(card: card, githubAPI: githubAPI)
+      githubAPI.createProjectCard(cardsURL: cardsURL,
+                                  contentID: contentID,
+                                  contentType: contentType,
+                                  note: note)
     }
   }
 
