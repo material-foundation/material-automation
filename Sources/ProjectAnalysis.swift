@@ -100,8 +100,6 @@ class ProjectAnalysis {
     let backlogID = githubAPI.createProjectColumn(name: "Backlog", projectID: projectID)
     let inProgressID = githubAPI.createProjectColumn(name: "In progress", projectID: projectID)
     let doneID = githubAPI.createProjectColumn(name: "Done", projectID: projectID)
-    //      let lastBacklogID = githubAPI.createProjectColumn(name: "Last sprint backlog",
-    //                                                        projectID: projectID)
 
     // Get last sprint's columns.
     guard let columnsURL = githubData.project?.columns_url else {
