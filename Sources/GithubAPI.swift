@@ -215,6 +215,172 @@ public class GithubAPI {
     return columnName
   }
 
+  func createNewProject(url: String, name: String, body: String = "") -> String? {
+    LogFile.debug("Creating new project with the name \(name), and body \(body)")
+    var projectID: String?
+    let performRequest = { () -> CURLResponse in
+      let projectsURL = url + "/projects"
+      let request = GithubCURLRequest(projectsURL,
+                                      .postString(try ["name": name,
+                                                       "body": body].jsonEncodedString()))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
+      if let projectIDNum = result["id"] as? Int {
+        projectID = String(projectIDNum)
+      }
+    }
+    return projectID
+  }
+
+  func updateProject(projectURL: String, projectUpdate: [String: Any]) {
+    LogFile.debug("Updating a project with url: \(projectURL) and update: \(projectUpdate.description)")
+    let performRequest = { () -> CURLResponse in
+      let request = GithubCURLRequest(projectURL,
+                                      .httpMethod(.patch),
+                                      .postString(try projectUpdate.jsonEncodedString()))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
+  }
+
+  func createProjectColumn(name: String, projectID: String) -> String? {
+    LogFile.debug("Creating project column with name \(name)")
+    var columnID: String?
+    let performRequest = { () -> CURLResponse in
+      let projectsURL = DefaultConfigParams.githubBaseURL + "/projects/" + projectID + "/columns"
+      let request = GithubCURLRequest(projectsURL,
+                                      .postString(try ["name": name].jsonEncodedString()))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
+      if let columnIDNum = result["id"] as? Int {
+        columnID = String(columnIDNum)
+      }
+    }
+    return columnID
+  }
+
+  func getProjectColumnsCardsURLs(columnsURL: String) -> [String: String] {
+    LogFile.debug("listing project columns with url \(columnsURL)")
+    var columnNameToCardsURL = [String: String]()
+    var url = columnsURL
+    var shouldPaginate = false
+    while true {
+      let performRequest = { () -> CURLResponse in
+        let request = GithubCURLRequest(url)
+        self.addAPIHeaders(to: request,
+                           with: ["Accept": "application/vnd.github.inertia-preview+json"])
+        return try request.perform()
+      }
+      githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+        let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
+        for column in result {
+          LogFile.debug(column.description)
+          if let columnName = column["name"] as? String,
+            let cardsURL = column["cards_url"] as? String {
+            columnNameToCardsURL[columnName] = cardsURL
+          }
+        }
+        if let nextURL = self.paginate(response: response) {
+          url = nextURL
+          shouldPaginate = true
+        } else {
+          shouldPaginate = false
+        }
+      }
+      if !shouldPaginate {
+        break
+      }
+    }
+    return columnNameToCardsURL
+  }
+
+  func listProjectCards(cardsURL: String) -> [[String: Any]] {
+    LogFile.debug("list project cards with url \(cardsURL)")
+    var cards = [[String: Any]]()
+    var url = cardsURL
+    var shouldPaginate = false
+    while true {
+      let performRequest = { () -> CURLResponse in
+        let request = GithubCURLRequest(url)
+        self.addAPIHeaders(to: request,
+                           with: ["Accept": "application/vnd.github.inertia-preview+json"])
+        return try request.perform()
+      }
+      githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+        let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
+        cards.append(contentsOf: result)
+        if let nextURL = self.paginate(response: response) {
+          url = nextURL
+          shouldPaginate = true
+        } else {
+          shouldPaginate = false
+        }
+      }
+      if !shouldPaginate {
+        break
+      }
+    }
+    return cards
+  }
+
+  func createProjectCard(cardsURL: String, contentID: Int?, contentType: String?, note: String?) {
+    LogFile.debug("creating project card with content ID: \(contentID ?? -1), content type:" +
+      "\(contentType ?? ""), and note: \(note ?? "")")
+    let performRequest = { () -> CURLResponse in
+      var requestBody = [String: Any]()
+      if let note = note {
+        requestBody = ["note": note]
+      } else if let contentID = contentID, let contentType = contentType {
+        requestBody = ["content_id": contentID, "content_type": contentType]
+      } else {
+        LogFile.error("missing the right params to create a project card")
+      }
+      let request = GithubCURLRequest(cardsURL,
+                                      .postString(try requestBody.jsonEncodedString()))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
+  }
+
+  func deleteProjectCard(cardID: String) {
+    LogFile.debug("deleting a project card with card ID: \(cardID)")
+    let performRequest = { () -> CURLResponse in
+      let request = GithubCURLRequest(DefaultConfigParams.githubBaseURL + "/projects/columns/cards/" + cardID,
+                                      .httpMethod(.delete))
+      self.addAPIHeaders(to: request,
+                         with: ["Accept": "application/vnd.github.inertia-preview+json"])
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
+  }
+
+  func getIssueID(issueURL: String) -> Int? {
+    LogFile.debug("getting issue ID with url: \(issueURL)")
+    var issueID: Int?
+    let performRequest = { () -> CURLResponse in
+      let request = GithubCURLRequest(issueURL)
+      self.addAPIHeaders(to: request)
+      return try request.perform()
+    }
+    githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
+      issueID = result["id"] as? Int
+    }
+    return issueID
+  }
+
 }
 
 // API Headers
@@ -266,4 +432,16 @@ extension GithubAPI {
       LogFile.error("error: \(error) desc: \(error.localizedDescription)")
     }
   }
+
+  func paginate(response: CURLResponse) -> String? {
+    if let links = response.get(HTTPResponseHeader.Name.custom(name: "Link")),
+      let nextLink = links.components(separatedBy: ",").filter({ $0.contains("rel=\"next\"") }).first,
+      let nextUrlAsString = nextLink.components(separatedBy: ";").first?
+        .trimmingCharacters(in: .init(charactersIn: " "))
+        .trimmingCharacters(in: .init(charactersIn: "<>")) {
+          return nextUrlAsString
+    }
+    return nil
+  }
+
 }
