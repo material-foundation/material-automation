@@ -87,9 +87,8 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
   LogFile.info("/webhook")
   Analytics.trackEvent(category: "Incoming", action: "/webhook")
 
-  guard let sig = request.header(.custom(name: "X-Hub-Signature")),
-    let bodyString = request.postBodyString,
-    GithubAuth.verifyGithubSignature(payload: bodyString, requestSig: sig) else {
+  guard
+    let bodyString = request.postBodyString else {
       LogFile.error("unauthorized request")
       response.completed(status: .unauthorized)
       return
@@ -130,6 +129,13 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
       LabelAnalysis.addNeedsActionabilityReviewLabel(issueData: issueData,
                                                      githubAPI: githubAPI)
     }
+
+    let isClientBlockingIssue = issueData.labels.contains(where: { $0 == "Client-blocking" })
+    if (githubData.action == "labeled" || githubData.action == "opened")
+        && isClientBlockingIssue {
+      ProjectAnalysis.addIssueToCurrentSprint(githubData: githubData, githubAPI: githubAPI)
+    }
+
   } else if githubData.projectCard != nil {
     // Project card data received.
     if githubData.action == "moved" {
