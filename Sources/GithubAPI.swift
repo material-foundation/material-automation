@@ -271,9 +271,9 @@ public class GithubAPI {
     return columnID
   }
 
-  func getProjectColumnsCardsURLs(columnsURL: String) -> [String: String] {
+  func getProjectColumns(columnsURL: String) -> [[String: Any]] {
     LogFile.debug("listing project columns with url \(columnsURL)")
-    var columnNameToCardsURL = [String: String]()
+    var columns = [[String: Any]]()
     var url = columnsURL
     var shouldPaginate = false
     while true {
@@ -287,10 +287,7 @@ public class GithubAPI {
         let result = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
         for column in result {
           LogFile.debug(column.description)
-          if let columnName = column["name"] as? String,
-            let cardsURL = column["cards_url"] as? String {
-            columnNameToCardsURL[columnName] = cardsURL
-          }
+          columns.append(column)
         }
         if let nextURL = self.paginate(response: response) {
           url = nextURL
@@ -301,6 +298,48 @@ public class GithubAPI {
       }
       if !shouldPaginate {
         break
+      }
+    }
+    return columns
+  }
+
+  func getProjectsForRepo(repoURL: String) -> [[String: Any]] {
+    var projects = [[String: Any]]()
+    var url = "\(repoURL)/projects?state=open"
+    var shouldPaginate = false
+    while true {
+      let performRequest = { () -> CURLResponse in
+        let request = GithubCURLRequest(url)
+        self.addAPIHeaders(to: request,
+                           with: ["Accept": "application/vnd.github.inertia-preview+json"])
+        return try request.perform()
+      }
+      githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
+        let results = try response.bodyString.jsonDecode() as? [[String: Any]] ?? [[:]]
+        projects += results
+
+        if let nextURL = self.paginate(response: response) {
+          url = nextURL
+          shouldPaginate = true
+        } else {
+          shouldPaginate = false
+        }
+      }
+      if !shouldPaginate {
+        break
+      }
+    }
+    return projects
+  }
+
+  func getProjectColumnsCardsURLs(columnsURL: String) -> [String: String] {
+    LogFile.debug("listing project columns with url \(columnsURL)")
+    let columns = getProjectColumns(columnsURL: columnsURL)
+    var columnNameToCardsURL = [String: String]()
+    columns.forEach { column in
+      if let columnName = column["name"] as? String,
+        let cardsURL = column["cards_url"] as? String {
+        columnNameToCardsURL[columnName] = cardsURL
       }
     }
     return columnNameToCardsURL
