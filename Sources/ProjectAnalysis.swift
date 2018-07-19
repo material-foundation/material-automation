@@ -58,9 +58,7 @@ class ProjectAnalysis {
       LogFile.error("No project name or github url")
       return
     }
-    // Example of regex match: "2018-06-05 - 2018-06-18".
-    let regex = "^[\\d]{4}-[\\d]{2}-[\\d]{2} - [\\d]{4}-[\\d]{2}-[\\d]{2}$"
-    guard projectName.range(of: regex, options: .regularExpression, range: nil, locale: nil) != nil,
+    guard projectIsSprint(projectName: projectName),
     let endDate = projectName.components(separatedBy: " - ").last else {
       LogFile.info("The project closed didn't fit the regex")
       return
@@ -127,6 +125,61 @@ class ProjectAnalysis {
       }
     }
 
+  }
+
+  class func addPullRequestToCurrentSprint(githubData: GithubData, githubAPI: GithubAPI) {
+    guard let sprintProject = sprintProjectForRepo(githubData: githubData, githubAPI: githubAPI),
+      let columnsURL = sprintProject["columns_url"] as? String else {
+        LogFile.error("couldn't get the current sprint project")
+        return
+    }
+
+    guard let contentID = githubData.PRData?.id else {
+      LogFile.error("couldn't get the pull request identifier")
+      return
+    }
+    let projectColumns = githubAPI.getProjectColumns(columnsURL: columnsURL)
+    for column in projectColumns {
+      guard let columnName = column["name"] as? String else {
+        continue
+      }
+      if columnName != "In progress" {
+        continue
+      }
+      guard let cardsURL = column["cards_url"] as? String else {
+        continue
+      }
+
+      // Add the PR to the column.
+      githubAPI.createProjectCard(cardsURL: cardsURL,
+                                  contentID: contentID,
+                                  contentType: "PullRequest",
+                                  note: nil)
+      break
+    }
+  }
+
+  class func sprintProjectForRepo(githubData: GithubData, githubAPI: GithubAPI) -> [String: Any]? {
+    guard let repoURL = githubData.url else {
+      return nil
+    }
+    let projects = githubAPI.getProjectsForRepo(repoURL: repoURL)
+    return projects.first(where: { project in
+      if let projectName = project["name"] as? String,
+        projectIsSprint(projectName: projectName) {
+        return true
+      }
+      return false
+    })
+  }
+
+  private class func projectIsSprint(projectName: String) -> Bool {
+    // Example of regex match: "2018-06-05 - 2018-06-18".
+    let regex = "^[\\d]{4}-[\\d]{2}-[\\d]{2} - [\\d]{4}-[\\d]{2}-[\\d]{2}$"
+    guard projectName.range(of: regex, options: .regularExpression, range: nil, locale: nil) != nil else {
+      return false
+    }
+    return true
   }
 
   private class func parseCardContentURL(card: [String: Any], githubAPI: GithubAPI) -> (Int?, String?) {
