@@ -289,12 +289,20 @@ public class IssueData: JSONConvertibleObject, CustomStringConvertible {
   }
 
   class func createIssueData(from dict: [String: Any]) -> IssueData? {
+    let labelNames: [String]
+    if let simpleLabels = dict["labels"] as? [String] {
+      labelNames = simpleLabels
+    } else if let complexLabels = dict["labels"] as? [[String: Any]] {
+      labelNames = complexLabels.flatMap { label in label["name"] as? String }
+    } else {
+      labelNames = []
+    }
     return IssueData(id: dict["id"] as? Int ?? -1,
                      html_url: dict["html_url"] as? String ?? "",
                      state: dict["state"] as? String ?? "",
                      title: dict["title"] as? String ?? "",
                      body: dict["body"] as? String ?? "",
-                     labels: dict["labels"] as? [String] ?? [String](),
+                     labels: labelNames,
                      url: dict["url"] as? String ?? "",
                      repository_url: dict["repository_url"] as? String ?? "")
   }
