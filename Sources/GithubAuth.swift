@@ -27,20 +27,11 @@ public class GithubAuth {
   static let credentialsLock = Threading.Lock()
 
   class func signAndEncodeJWT() throws -> String {
-    guard let githubAppIDStr = ConfigManager.shared?.configDict["GITHUB_APP_ID"] as? String,
-      let pemFileName = ConfigManager.shared?.configDict["PEM_FILE_NAME"] as? String,
-      let githubAppID = Int(githubAppIDStr) else {
-      LogFile.error("You have not defined GITHUB_APP_ID or PEM_FILE_NAME in your app.yaml file")
-      return ""
-    }
-    let fileDirectory = DefaultConfigParams.projectPath
-    LogFile.debug(fileDirectory)
-    let PEMPath = fileDirectory + pemFileName
-    let key = try PEMKey(pemPath: PEMPath)
+    let key = try PEMKey(pemPath: config.pemFilePath)
     let currTime = time(nil)
     let payload = ["iat": currTime,
                    "exp": currTime + (10 * 60),
-                   "iss": githubAppID]
+                   "iss": config.githubAppId]
     let jwt1 = try JWTCreator(payload: payload)
     let token = try jwt1.sign(alg: .rs256, key: key)
     JWTToken = token
@@ -67,7 +58,7 @@ public class GithubAuth {
 
   class func getInstallationAccessTokenURL(installationID: String) -> String? {
     do {
-      let request = CURLRequest(DefaultConfigParams.githubBaseURL + "/app/installations/" + installationID)
+      let request = CURLRequest(config.githubAPIBaseURL + "/app/installations/" + installationID)
       addAuthHeaders(to: request)
       let json = try request.perform().bodyString.jsonDecode() as? [String: Any] ?? [:]
       return json["access_tokens_url"] as? String
@@ -98,11 +89,10 @@ public class GithubAuth {
   }
 
   class func githubAuthHTTPHeaders() -> [String: String] {
-    let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
     headers["Authorization"] = "Bearer \(JWTToken)"
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = userAgent
+    headers["User-Agent"] = config.userAgent
     return headers
   }
 
