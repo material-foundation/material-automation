@@ -128,22 +128,46 @@ class ProjectAnalysis {
   }
 
   class func addPullRequestToCurrentSprint(githubData: GithubData, githubAPI: GithubAPI) {
+    guard let contentID = githubData.PRData?.id else {
+      LogFile.error("couldn't get the pull request identifier")
+      return
+    }
+    addContentIDToCurrentSprint(githubData: githubData,
+                                githubAPI: githubAPI,
+                                contentID: contentID,
+                                contentType: "PullRequest",
+                                targetColumnName: "In progress")
+  }
+
+  class func addIssueToCurrentSprint(githubData: GithubData, githubAPI: GithubAPI) {
+    guard let contentID = githubData.issueData?.id else {
+      LogFile.error("couldn't get the pull request identifier")
+      return
+    }
+    addContentIDToCurrentSprint(githubData: githubData,
+                                githubAPI: githubAPI,
+                                contentID: contentID,
+                                contentType: "Issue",
+                                targetColumnName: "Backlog")
+  }
+
+  class func addContentIDToCurrentSprint(githubData: GithubData,
+                                         githubAPI: GithubAPI,
+                                         contentID: Int,
+                                         contentType: String,
+                                         targetColumnName: String) {
     guard let sprintProject = sprintProjectForRepo(githubData: githubData, githubAPI: githubAPI),
       let columnsURL = sprintProject["columns_url"] as? String else {
         LogFile.error("couldn't get the current sprint project")
         return
     }
 
-    guard let contentID = githubData.PRData?.id else {
-      LogFile.error("couldn't get the pull request identifier")
-      return
-    }
     let projectColumns = githubAPI.getProjectColumns(columnsURL: columnsURL)
     for column in projectColumns {
       guard let columnName = column["name"] as? String else {
         continue
       }
-      if columnName != "In progress" {
+      if columnName != targetColumnName {
         continue
       }
       guard let cardsURL = column["cards_url"] as? String else {
@@ -153,7 +177,7 @@ class ProjectAnalysis {
       // Add the PR to the column.
       githubAPI.createProjectCard(cardsURL: cardsURL,
                                   contentID: contentID,
-                                  contentType: "PullRequest",
+                                  contentType: contentType,
                                   note: nil)
       break
     }
