@@ -75,9 +75,9 @@ public class GithubAPI {
   var installationID: String
   let curlAccessLock = Threading.Lock()
   var lastGithubAccess = time(nil)
-  private let config: GitHubAppConfig
+  private let config: GithubAppConfig
 
-  init(accessToken: String, installationID: String, config: GitHubAppConfig) {
+  init(accessToken: String, installationID: String, config: GithubAppConfig) {
     self.accessToken = accessToken
     self.installationID = installationID
     self.config = config

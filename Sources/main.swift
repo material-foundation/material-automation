@@ -32,7 +32,7 @@ let server = HTTPServer()
 var routes = Routes()
 
 // Create GitHub app config.
-let config = GitHubAppConfig()
+let config = GithubAppConfig()
 
 routes.add(method: .get, uri: "/_ah/health", handler: { request, response in
   LogFile.info("GET - /_ah/health route handler...")

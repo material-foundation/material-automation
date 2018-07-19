@@ -17,7 +17,7 @@
 import Foundation
 import PerfectLib
 
-class GitHubAppConfig {
+class GithubAppConfig {
   /// The App Engine storage bucket project url.
   let cloudStorageBucket = "material-automation.appspot.com"
 
@@ -38,7 +38,7 @@ class GitHubAppConfig {
 
   init() {
     self.pemFilePath =
-        GitHubAppConfig.projectRootPath.appendingPathComponent("GithubKey.pem").absoluteString
+        GithubAppConfig.projectRootPath.appendingPathComponent("GithubKey.pem").absoluteString
   }
 
   static private let projectRootPath: URL = {
