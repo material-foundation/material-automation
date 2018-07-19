@@ -38,7 +38,7 @@ class GithubAppConfig {
 
   init() {
     self.pemFilePath =
-        GithubAppConfig.projectRootPath.appendingPathComponent("GithubKey.pem").absoluteString
+        GithubAppConfig.projectRootPath.appendingPathComponent("GithubKey.pem").path
   }
 
   static private let projectRootPath: URL = {
