@@ -31,7 +31,6 @@ RUN mkdir /root/MaterialAutomation
 ADD Package.swift /root/MaterialAutomation
 ADD Sources /root/MaterialAutomation/Sources
 ADD GithubKey.pem /root/MaterialAutomation
-ADD Config.plist /root/MaterialAutomation
 
 # Build the app
 RUN cd /root/MaterialAutomation && ls -la && cd Sources && ls -la
