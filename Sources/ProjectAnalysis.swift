@@ -92,7 +92,7 @@ class ProjectAnalysis {
       return
     }
 
-    githubAPI.updateProject(projectURL: DefaultConfigParams.githubBaseURL + "/projects/" + projectID,
+    githubAPI.updateProject(projectURL: config.githubAPIBaseURL + "/projects/" + projectID,
                             projectUpdate: ["name": projectName,
                                             "state": "closed"])
 
@@ -154,7 +154,7 @@ class ProjectAnalysis {
                                 githubAPI: GithubAPI) {
     if let columnID = columnID {
       let note = card["note"] as? String
-      let cardsURL = DefaultConfigParams.githubBaseURL + "/projects/columns/" + columnID + "/cards"
+      let cardsURL = config.githubAPIBaseURL + "/projects/columns/" + columnID + "/cards"
       let (contentID, contentType) = parseCardContentURL(card: card, githubAPI: githubAPI)
       githubAPI.createProjectCard(cardsURL: cardsURL,
                                   contentID: contentID,

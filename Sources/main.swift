@@ -31,6 +31,9 @@ let server = HTTPServer()
 // Create the container variable for routes to be added to.
 var routes = Routes()
 
+// Create GitHub app config.
+let config = GitHubAppConfig()
+
 routes.add(method: .get, uri: "/_ah/health", handler: { request, response in
   LogFile.info("GET - /_ah/health route handler...")
   response.setBody(string: "OK")
@@ -40,7 +43,7 @@ routes.add(method: .get, uri: "/_ah/health", handler: { request, response in
 // Basic GET request
 routes.add(method: .get, uri: "/hello", handler: { request, response in
   LogFile.info("GET - /hello route handler...")
-  response.setBody(string: DefaultConfigParams.helloMessage)
+  response.setBody(string: config.helloMessage)
   response.completed()
 })
 

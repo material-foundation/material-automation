@@ -45,7 +45,7 @@ class GithubManager {
         LogFile.error("couldn't get an access token for installation: \(installation)")
         return nil
       }
-      let githubAPI = GithubAPI(accessToken: accessToken, installationID: installation)
+      let githubAPI = GithubAPI(accessToken: accessToken, installationID: installation, config: config)
       githubAPIs[accessToken] = githubAPI
       return githubAPI
     }
@@ -75,10 +75,12 @@ public class GithubAPI {
   var installationID: String
   let curlAccessLock = Threading.Lock()
   var lastGithubAccess = time(nil)
+  private let config: GitHubAppConfig
 
-  init(accessToken: String, installationID: String) {
+  init(accessToken: String, installationID: String, config: GitHubAppConfig) {
     self.accessToken = accessToken
     self.installationID = installationID
+    self.config = config
   }
 
   /// This method adds labels to a Github issue through the API.
@@ -202,7 +204,7 @@ public class GithubAPI {
     LogFile.debug("Fetching name for column ID: \(columnID)")
     var columnName: String?
     let performRequest = { () -> CURLResponse in
-      let columnsAPIPath = DefaultConfigParams.githubBaseURL + "/projects/columns/\(columnID)"
+      let columnsAPIPath = self.config.githubAPIBaseURL + "/projects/columns/\(columnID)"
       let request = GithubCURLRequest(columnsAPIPath)
       self.addAPIHeaders(to: request,
                          with: ["Accept": "application/vnd.github.inertia-preview+json"])
@@ -253,7 +255,7 @@ public class GithubAPI {
     LogFile.debug("Creating project column with name \(name)")
     var columnID: String?
     let performRequest = { () -> CURLResponse in
-      let projectsURL = DefaultConfigParams.githubBaseURL + "/projects/" + projectID + "/columns"
+      let projectsURL = self.config.githubAPIBaseURL + "/projects/" + projectID + "/columns"
       let request = GithubCURLRequest(projectsURL,
                                       .postString(try ["name": name].jsonEncodedString()))
       self.addAPIHeaders(to: request,
@@ -357,8 +359,8 @@ public class GithubAPI {
   func deleteProjectCard(cardID: String) {
     LogFile.debug("deleting a project card with card ID: \(cardID)")
     let performRequest = { () -> CURLResponse in
-      let request = GithubCURLRequest(DefaultConfigParams.githubBaseURL + "/projects/columns/cards/" + cardID,
-                                      .httpMethod(.delete))
+      let url = self.config.githubAPIBaseURL + "/projects/columns/cards/" + cardID
+      let request = GithubCURLRequest(url, .httpMethod(.delete))
       self.addAPIHeaders(to: request,
                          with: ["Accept": "application/vnd.github.inertia-preview+json"])
       return try request.perform()
@@ -386,12 +388,11 @@ public class GithubAPI {
 // API Headers
 extension GithubAPI {
   func githubAPIHTTPHeaders(customHeaderParams: [String: String]?) -> [String: String] {
-    let userAgent = ConfigManager.shared?.configDict["USER_AGENT"] as? String ?? DefaultConfigParams.userAgent
     var headers = [String: String]()
     headers["Authorization"] = "token \(self.accessToken)"
     LogFile.debug("the access token is: \(self.accessToken)")
     headers["Accept"] = "application/vnd.github.machine-man-preview+json"
-    headers["User-Agent"] = userAgent
+    headers["User-Agent"] = config.userAgent
 
     if let customHeaderParams = customHeaderParams {
       customHeaderParams.forEach { (k,v) in headers[k] = v }
