@@ -22,8 +22,6 @@ class GitHubAppConfig {
   let cloudStorageBucket = "material-automation.appspot.com"
 
   /// The GitHub API base url.
-  ///
-  /// Plist config identifier: GITHUB_API_BASE_URL
   let githubAPIBaseURL = "https://api.github.com"
 
   /// The GitHub app ID that will be used for all authentication requests.
@@ -33,14 +31,9 @@ class GitHubAppConfig {
   let helloMessage = "Hello from Material Automation!"
 
   /// The full path to the GitHub app's PEM file.
-  ///
-  /// Plist config identifier: PEM_FILE_NAME
-  /// Plist config value: A filename relative to the material-automation project's source root.
   let pemFilePath: String
 
   /// The user agent that will sign all API requests.
-  ///
-  /// Plist config identifier: USER_AGENT
   let userAgent = "Material Automation"
 
   init() {
