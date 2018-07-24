@@ -407,19 +407,25 @@ public class GithubAPI {
     githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
   }
 
-  func getIssueID(issueURL: String) -> Int? {
-    LogFile.debug("getting issue ID with url: \(issueURL)")
-    var issueID: Int?
+  func getObject(objectURL: String) -> [String: Any]? {
+    LogFile.debug("getting object with url: \(objectURL)")
+    var object: [String: Any]?
     let performRequest = { () -> CURLResponse in
-      let request = GithubCURLRequest(issueURL)
+      let request = GithubCURLRequest(objectURL)
       self.addAPIHeaders(to: request)
       return try request.perform()
     }
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
       let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
-      issueID = result["id"] as? Int
+      object = result
     }
-    return issueID
+    return object
+  }
+
+  func getIssueID(issueURL: String) -> Int? {
+    LogFile.debug("getting issue ID with url: \(issueURL)")
+    let object = getObject(objectURL: issueURL)
+    return object?["id"] as? Int
   }
 
 }
