@@ -87,8 +87,9 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
   LogFile.info("/webhook")
   Analytics.trackEvent(category: "Incoming", action: "/webhook")
 
-  guard
-    let bodyString = request.postBodyString else {
+  guard let sig = request.header(.custom(name: "X-Hub-Signature")),
+    let bodyString = request.postBodyString,
+    GithubAuth.verifyGithubSignature(payload: bodyString, requestSig: sig) else {
       LogFile.error("unauthorized request")
       response.completed(status: .unauthorized)
       return
