@@ -407,6 +407,10 @@ public class GithubAPI {
     githubRequestTemplate(requestFlow: performRequest, methodName: #function, resultFlow: nil)
   }
 
+  /// Fetches a single GitHub object from the given url.
+  ///
+  /// - Parameter objectURL: Any singular result, e.g. an Issue, Pull Request, or User.
+  /// - Returns: The returned object parsed into a dictionary, if the request succeeded.
   func getObject(objectURL: String) -> [String: Any]? {
     LogFile.debug("getting object with url: \(objectURL)")
     var object: [String: Any]?
@@ -422,6 +426,10 @@ public class GithubAPI {
     return object
   }
 
+  /// Fetches a single GitHub Issue and returns it's unique identifier.
+  ///
+  /// - Parameter issueURL: A GitHub API issue URL.
+  /// - Returns: The issue's identifier parsed as an Int.
   func getIssueID(issueURL: String) -> Int? {
     LogFile.debug("getting issue ID with url: \(issueURL)")
     let object = getObject(objectURL: issueURL)
