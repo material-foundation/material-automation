@@ -46,6 +46,25 @@ class ProjectAnalysis {
       }
     }
 
+    // Any time a card moves to an in progress column in any project, add it to the current sprint.
+    if let projectName = githubData.project?.name,
+      !projectIsSprint(projectName: projectName) && toColumnName.lowercased() == "in progress" {
+
+      if let contentID = githubData.PRData?.id {
+        addContentIDToCurrentSprint(githubData: githubData,
+                                    githubAPI: githubAPI,
+                                    contentID: contentID,
+                                    contentType: "PullRequest",
+                                    targetColumnName: "In progress")
+      } else if let contentID = githubData.issueData?.id {
+        addContentIDToCurrentSprint(githubData: githubData,
+                                    githubAPI: githubAPI,
+                                    contentID: contentID,
+                                    contentType: "Issue",
+                                    targetColumnName: "In progress")
+      }
+    }
+
     if toColumnName == "Done" {
       //close issue
       githubAPI.editIssue(url: contentURL, issueEdit: ["state": "closed"])
