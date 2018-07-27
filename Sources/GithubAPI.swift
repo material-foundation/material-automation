@@ -200,9 +200,21 @@ public class GithubAPI {
   ///
   /// - Parameter columnID: the column ID number.
   /// - Returns: the name of the column.
-  func getProjectColumnName(columnID: Int) -> String? {
+  func getProjectFromColumn(columnID: Int) -> [String: Any]? {
+    guard let projectURL = getProjectColumn(columnID: columnID)?["project_url"] as? String else {
+      return nil
+    }
+    return getObject(objectURL: projectURL,
+                     with: ["Accept": "application/vnd.github.inertia-preview+json"])
+  }
+
+  /// Get the project column for a given column ID.
+  ///
+  /// - Parameter columnID: the column ID number.
+  /// - Returns: the column.
+  func getProjectColumn(columnID: Int) -> [String: Any]? {
     LogFile.debug("Fetching name for column ID: \(columnID)")
-    var columnName: String?
+    var project: [String: Any]?
     let performRequest = { () -> CURLResponse in
       let columnsAPIPath = self.config.githubAPIBaseURL + "/projects/columns/\(columnID)"
       let request = GithubCURLRequest(columnsAPIPath)
@@ -211,10 +223,17 @@ public class GithubAPI {
       return try request.perform()
     }
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in
-      let result = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
-      columnName = result["name"] as? String
+      project = try response.bodyString.jsonDecode() as? [String: Any] ?? [:]
     }
-    return columnName
+    return project
+  }
+
+  /// Get the project's column name by providing the column ID.
+  ///
+  /// - Parameter columnID: the column ID number.
+  /// - Returns: the name of the column.
+  func getProjectColumnName(columnID: Int) -> String? {
+    return getProjectColumn(columnID: columnID)?["name"] as? String
   }
 
   func createNewProject(url: String, name: String, body: String = "") -> String? {
@@ -411,12 +430,13 @@ public class GithubAPI {
   ///
   /// - Parameter objectURL: Any singular result, e.g. an Issue, Pull Request, or User.
   /// - Returns: The returned object parsed into a dictionary, if the request succeeded.
-  func getObject(objectURL: String) -> [String: Any]? {
+  func getObject(objectURL: String,
+                 with customHeaderParams: [String: String]? = nil) -> [String: Any]? {
     LogFile.debug("getting object with url: \(objectURL)")
     var object: [String: Any]?
     let performRequest = { () -> CURLResponse in
       let request = GithubCURLRequest(objectURL)
-      self.addAPIHeaders(to: request)
+      self.addAPIHeaders(to: request, with: customHeaderParams)
       return try request.perform()
     }
     githubRequestTemplate(requestFlow: performRequest, methodName: #function) { response in

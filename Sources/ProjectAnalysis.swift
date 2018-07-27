@@ -48,7 +48,10 @@ class ProjectAnalysis {
 
     // Any time a card moves to an in progress column in any project, add it to the current sprint.
     if toColumnName.lowercased() == "in progress" {
-      if let movedObject = githubAPI.getObject(objectURL: contentURL),
+      if let project = githubAPI.getProjectFromColumn(columnID: toColumn),
+        let projectName = project["name"] as? String,
+        !projectIsSprint(projectName: projectName),
+        let movedObject = githubAPI.getObject(objectURL: contentURL),
         let contentID = movedObject["id"] as? Int {
         let contentType = (movedObject["pull_request"] != nil) ? "PullRequest" : "Issue"
         addContentIDToCurrentSprint(githubData: githubData,
