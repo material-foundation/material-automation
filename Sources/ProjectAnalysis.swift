@@ -38,7 +38,12 @@ class ProjectAnalysis {
     if let sender = githubData.sender,
       fromColumnName == "Backlog" && (toColumnName == "In progress" || toColumnName == "Done") {
       //assign issue to user
-      githubAPI.editIssue(url: contentURL, issueEdit: ["assignees": [sender]])
+      let object = githubAPI.getObject(objectURL: contentURL)
+      if let assignees = object?["assignees"] as? [[String: Any]] {
+        if assignees.count == 0 { // Only assign if we can confirm that nobody is already assigned.
+          githubAPI.editIssue(url: contentURL, issueEdit: ["assignees": [sender]])
+        }
+      }
     }
 
     if toColumnName == "Done" {
