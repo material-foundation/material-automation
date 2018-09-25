@@ -116,11 +116,6 @@ routes.add(method: .post, uri: "/webhook", handler: { request, response in
                                                    githubAPI: githubAPI)
     }
 
-    // Add any opened pull requests to the current sprint.
-    if githubData.action == "opened" || githubData.action == "reopened" {
-      ProjectAnalysis.addPullRequestToCurrentSprint(githubData: githubData, githubAPI: githubAPI)
-    }
-
   } else if let issueData = githubData.issueData {
     // Issue data received.
     if githubData.action == "opened" {
